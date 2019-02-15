@@ -1,0 +1,353 @@
+FUNCTION ADD.TABLE(SHEET.IDX,TABLE.DATA)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        15 Jan 2018
+* Project:     MV To Excel
+* Description: This function will add a defined data area (table) to a worksheet
+*
+*****************************************************************************
+* Include(s)
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT  = ''
+ERR     = ''
+ATTERAY = ''
+CORDS   = ''
+*
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+IF (SHEET.IDX LE SHEET.CNT) THEN
+  *
+  ST.CORDS     = TABLE.DATA<TABLE$CORDS,1>
+  ED.CORDS     = TABLE.DATA<TABLE$CORDS,2>
+  FIRST.COL = FIELD(ST.CORDS,',',1)
+  LAST.COL  = FIELD(ED.CORDS,',',1)
+  CORDS        = MVTX.GETCOL(FIRST.COL) : FIELD(ST.CORDS,',',2)
+  CORDS       := ':'
+  FILTER.CORDS = CORDS : MVTX.GETCOL(FIELD(ED.CORDS,',',1)) : FIELD(ED.CORDS,',',2) -1
+  CORDS       := MVTX.GETCOL(LAST.COL) : FIELD(ED.CORDS,',',2)
+  *
+  IF (TABLE.CNT<SHEET.IDX> EQ '') THEN
+    TABLE.CNT<SHEET.IDX> = 1
+  END ELSE 
+    TABLE.CNT<SHEET.IDX> += 1
+  END
+  GOSUB 1000 ;* Build the table xml
+  GOSUB 2000 ;* Add worksheet rels
+  GOSUB 3000 ;* Add table handle to worksheet
+  GOSUB 4000 ;* Add override to content types
+  *
+  IF NOT(ERR) THEN
+    RESULT = @TRUE
+  END ELSE
+    XML.STATUS = XDOMClose(table(SUM(TABLE.CNT)))
+    RESULT<RESULT$VALUE> = @FALSE
+    RESULT<RESULT$ERROR> = ERR
+    TABLE.CNT<SHEET.IDX> -=1
+  END
+  *
+END ELSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> = 'Invalid worksheet index [' : SHEET.IDX : ']'
+END
+*
+RETURN RESULT
+*
+*****************************************************************************
+1000 * Build the table xml
+*****************************************************************************
+*
+TEMPLATE = 'TABLE'
+T.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,table(SUM(TABLE.CNT)))
+*
+T.STATUS = MVTX.GET.CHILD(table(SUM(TABLE.CNT)),1,TABLE)
+GOSUB 5000                        ;*Handle Errors
+T.STATUS = MVTX.GET.CHILD(TABLE,1,AUTO.FILTER)
+GOSUB 5000                        ;*Handle Errors
+T.STATUS = MVTX.GET.CHILD(TABLE,2,TABLE.COLS)
+GOSUB 5000                        ;*Handle Errors
+T.STATUS = MVTX.GET.CHILD(TABLE,3,TABLE.STYLE)
+GOSUB 5000                        ;*Handle Errors
+*
+IF NOT(ERR) THEN 
+  *
+  GOSUB 1200 ;* Setup the table element
+  GOSUB 1300 ;* Setup the table columns
+  GOSUB 1400 ;* Setup the table master styles
+  *
+END
+*
+RETURN
+*
+*****************************************************************************
+1200 *setup the table element
+*****************************************************************************
+*
+XML.STATUS = XDOMGetAttribute(TABLE,'id',ID)
+XML.STATUS = XDOMGetAttribute(TABLE,'ref',T.REF)
+XML.STATUS = XDOMGetAttribute(TABLE,'displayName',DISPLAY.NAME)
+XML.STATUS = XDOMGetAttribute(TABLE,'name',NAME)
+XML.STATUS = XDOMGetAttribute(TABLE,'totalsRowShown',TRS)
+XML.STATUS = XDOMGetAttribute(TABLE,'totalsRowCount',TRC)
+*
+IF (TABLE.DATA<TABLE$TOTALS>) THEN
+  XML.STATUS = XDOMSetNodeValue(TRS,@TRUE)
+  XML.STATUS = XDOMSetNodeValue(TRC,'1')
+END ELSE
+  XML.STATUS = XDOMSetNodeValue(TRS,@FALSE)
+  XML.STATUS = XDOMSetNodeValue(TRC,'0')
+END 
+XML.STATUS = XDOMSetNodeValue(ID,SUM(TABLE.CNT))
+XML.STATUS = XDOMSetNodeValue(T.REF,CORDS)
+*
+TABLE.NAME = 'Table':SUM(TABLE.CNT)
+XML.STATUS = XDOMSetNodeValue(NAME,TABLE.NAME)
+IF (TABLE.DATA<TABLE$DSPNAME>) THEN
+  DSP.NAME   = CHANGE(TABLE.DATA<TABLE$DSPNAME>,' ','_')
+END ELSE
+  DSP.NAME   = TABLE.NAME
+END
+XML.STATUS = XDOMSetNodeValue(DISPLAY.NAME,DSP.NAME)
+*
+IF (XML.STATUS NE XML.SUCCESS) THEN
+  XML.STATUS = XMLGetError(XML.STATUS,TEXT)
+  ERR := 'Failed to setup table element XML ' : TEXT
+END 
+*
+RETURN
+*
+*****************************************************************************
+1300 * Setup table columns
+*****************************************************************************
+*
+COLS = LAST.COL - FIRST.COL + 1
+*
+GOSUB 1350 ;* Get the header array
+*
+XML.STATUS = XDOMGetAttribute(AUTO.FILTER,'ref',A.REF)
+XML.STATUS = XDOMSetNodeValue(A.REF,FILTER.CORDS)
+*
+XML.STATUS = XDOMGetAttribute(TABLE.COLS,'count',COL.COUNT)
+XML.STATUS = XDOMSetNodeValue(COL.COUNT,COLS)
+*
+FOR COL.LOOP = 1 TO COLS
+  COL.CORD = FIRST.COL + COL.LOOP - 1
+  ATTERAY = ''
+  FORMULA = ''
+  ROW.FUN  = ''
+  VMC = 1
+  *
+  IF (TABLE.DATA<TABLE$COLSTYL,COL.LOOP>) THEN
+    ATTERAY<1,VMC> = 'dataDxfId'
+    ATTERAY<2,VMC> = TABLE.DATA<TABLE$COLSTYL,COL.LOOP>
+    VMC += 1
+  END
+  *
+  IF (TABLE.DATA<TABLE$TOTSTYL,COL.LOOP>) THEN
+    *ATTERAY<1,VMC> = 'totalsRowDxfId'
+    *ATTERAY<2,VMC> = TABLE.DATA<TABLE$TOTSTYL,COL.LOOP>
+    *VMC += 1
+  END
+  *
+  IF (TABLE.DATA<TABLE$TOTALS,COL.LOOP>) THEN
+    ROW.FUN = TABLE.DATA<TABLE$TOTALS,COL.LOOP>
+
+    BEGIN CASE
+      CASE (ROW.FUN EQ 'sum')
+        FORMULA = 'SUBTOTAL(109,': DSP.NAME :'[' : HEADER<1,COL.LOOP> : '])'
+      CASE (ROW.FUN EQ 'count')
+        FORMULA = 'SUBTOTAL(103,': DSP.NAME :'[' : HEADER<1,COL.LOOP> : '])'
+      CASE (ROW.FUN EQ 'average')
+        FORMULA = 'SUBTOTAL(101,': DSP.NAME :'[' : HEADER<1,COL.LOOP> : '])'
+      CASE (ROW.FUN EQ 'max')
+        FORMULA = 'SUBTOTAL(104,': DSP.NAME :'[' : HEADER<1,COL.LOOP> : '])'
+      CASE (ROW.FUN EQ 'min')
+        FORMULA = 'SUBTOTAL(105,': DSP.NAME :'[' : HEADER<1,COL.LOOP> : '])'
+      CASE (ROW.FUN EQ 'stdDev')
+        FORMULA = 'SUBTOTAL(107,': DSP.NAME :'[' : HEADER<1,COL.LOOP> : '])'
+      CASE (ROW.FUN EQ 'var')
+        FORMULA = 'SUBTOTAL(110,': DSP.NAME :'[' : HEADER<1,COL.LOOP> : '])'
+      CASE (ROW.FUN EQ 'countNums')
+        FORMULA = 'SUBTOTAL(103,': DSP.NAME :'[' : HEADER<1,COL.LOOP> : '])'
+      CASE 1
+        FORMULA = ROW.FUN
+        ROW.FUN = 'custom'
+    END CASE
+    ATTERAY<1,VMC> = 'totalsRowFunction'
+    ATTERAY<2,VMC> = ROW.FUN
+    VMC += 1
+    *
+  END
+  IF (TABLE.DATA<TABLE$TOTALS> NE '') THEN
+    LAST.ROW   = FIELD(ED.CORDS,',',2)
+    EDIT.CORDS = COL.CORD : ',' : LAST.ROW
+    CELL.DATA  = ''
+    CELL.DATA<CELL$FORMULA> = FORMULA
+    CELL.DATA<CELL$STYLE>   = TABLE.DATA<TABLE$TOTSTYL,COL.LOOP>
+    T.STATUS  = MVTX.EDIT.CELL(SHEET.IDX,EDIT.CORDS,CELL.DATA)
+  END
+  *
+  FIRST.ROW  = FIELD(ST.CORDS,',',2)
+  EDIT.CORDS = COL.CORD : ',' : FIRST.ROW
+  CELL.DATA  = ''
+  CELL.DATA<CELL$VALUE> = HEADER<1,COL.LOOP>
+  T.STATUS   = MVTX.EDIT.CELL(SHEET.IDX,EDIT.CORDS,CELL.DATA)
+  *
+  ATTERAY<1,VMC> = 'name'
+  ATTERAY<2,VMC> = HEADER<1,COL.LOOP>
+  VMC += 1
+  ATTERAY<1,VMC> = 'id'
+  ATTERAY<2,VMC> = COL.LOOP
+  *
+  T.STATUS = MVTX.APPEND.NODE(TABLE.COLS,'tableColumn','',ATTERAY,'',TABLE.COL)
+  GOSUB 5000                  ;* Error handling
+  IF (ROW.FUN EQ 'custom') THEN
+    T.STATUS = MVTX.APPEND.NODE(TABLE.COL,'totalsRowFormula',FORMULA,'','',TABLE.FORM)
+    GOSUB 5000                  ;* Error handling
+  END
+  *
+  XML.STATUS = XDOMClose(TABLE.FORM)
+  XML.STATUS = XDOMClose(TABLE.COL)
+NEXT COL.LOOP
+*
+RETURN
+*
+*****************************************************************************
+1350 * Get the header array
+*****************************************************************************
+*
+
+HEADER = TABLE.DATA<TABLE$HEADER>
+FOUND  = ''
+*
+FOR COL = 1 TO COLS
+  HEADER<1,COL> = TRIM(HEADER<1,COL>) ;* Trailing spaces mess tables up.
+  CNTER  = 0
+  IF (HEADER<1,COL>  EQ '') THEN
+    HEADER<1,COL> = 'Column'
+    FOUND<1,-1>   = 'Column' ;* Add this so that the first one resolves to 'Column1'
+  END
+  UNIQUE = @FALSE
+  LOCATE(HEADER<1,COL>,FOUND,1;PTR) THEN
+    LOOP
+      CNTER += 1
+    UNTIL (UNIQUE) DO
+      TRY.IT = HEADER<1,COL> : CNTER
+      LOCATE(TRY.IT,FOUND,1;PTR) ELSE
+        UNIQUE = @TRUE
+        FOUND<1,-1>   = TRY.IT
+        HEADER<1,COL> = TRY.IT
+      END      
+    REPEAT
+  END ELSE
+    FOUND<1,-1> = HEADER<1,COL>
+  END
+NEXT COL
+*
+*****************************************************************************
+1400 * Setup table master styles
+*****************************************************************************
+*
+IF (TABLE.DATA<TABLE$STYLE>) THEN
+  XML.STATUS = XDOMGetAttribute(TABLE.STYLE,'name',STYLE.NAME)
+  XML.STATUS = XDOMSetNodeValue(STYLE.NAME,TABLE.DATA<TABLE$STYLE>)
+END
+IF (TABLE.DATA<TABLE$ROWSTRP>) THEN
+  XML.STATUS = XDOMGetAttribute(TABLE.STYLE,'showRowStripes',ROWSTRP)
+  XML.STATUS = XDOMSetNodeValue(ROWSTRP,TABLE.DATA<TABLE$ROWSTRP>)END
+IF (TABLE.DATA<TABLE$COLSTRP>) THEN
+  XML.STATUS = XDOMGetAttribute(TABLE.STYLE,'showColumnStripes',COLSTRP)
+  XML.STATUS = XDOMSetNodeValue(COLSTRP,TABLE.DATA<TABLE$COLSTRP>)
+END
+IF (TABLE.DATA<TABLE$LCOLHI>) THEN
+  XML.STATUS = XDOMGetAttribute(TABLE.STYLE,'showLastColumn',LCOLHI)
+  XML.STATUS = XDOMSetNodeValue(LCOLHI,TABLE.DATA<TABLE$LCOLHI>)
+END
+IF (TABLE.DATA<TABLE$FCOLHI>) THEN
+  XML.STATUS = XDOMGetAttribute(TABLE.STYLE,'showFirstColumn',FCOLHI)
+  XML.STATUS = XDOMSetNodeValue(FCOLHI,TABLE.DATA<TABLE$FCOLHI>)
+END
+IF (XML.STATUS NE XML.SUCCESS) THEN
+  MSG = XMLGetError(XML.STATUS,TEXT)
+  T.STATUS<RESULT$VALUE> = @FALSE
+  T.STATUS<RESULT$ERROR> = TEXT
+  GOSUB 5000 ;* Error handling
+END
+*
+RETURN
+*****************************************************************************
+2000 * Add to WS level rels
+*****************************************************************************
+*
+ATTERAY = ''
+WS.REL.CNT<SHEET.IDX> += 1
+ID     = 'rId' : WS.REL.CNT<SHEET.IDX>
+TYPE   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/table'
+TARGET = '../tables/table' : SUM(TABLE.CNT) : '.xml'
+ATTERAY<1> = 'Id' : @VM : 'Type' : @VM : 'Target'
+ATTERAY<2> = ID   : @VM : TYPE   : @VM : TARGET
+T.STATUS = MVTX.APPEND.NODE(ws.xml.rels.Relationships(SHEET.IDX),'Relationship','',ATTERAY,'',RNODE)
+GOSUB 5000    ;* Error Handling
+*
+RETURN
+*
+*****************************************************************************
+3000 * Add to sheet document
+*****************************************************************************
+*
+IF (WS.REL.CNT<SHEET.IDX> EQ 1) THEN
+  XML.STATUS = XDOMAddChild(sheet.worksheet(SHEET.IDX),'','',sheet.worksheet.tableParts(SHEET.IDX),XDOM.NODUP)
+  T.STATUS   = MVTX.REMOVE.NODE(sheet.worksheet.tableParts(SHEET.IDX),1,tablePart(SHEET.IDX))
+END
+*
+XML.STATUS = XDOMLocateNode(tablePart(SHEET.IDX),XDOM.CHILD,1,XDOM.ATTR.NODE,RID)
+XML.STATUS = XDOMSetNodeValue(RID,'rId' : WS.REL.CNT<SHEET.IDX>)
+XML.STATUS = XDOMClone(tablePart(SHEET.IDX),TABLE.PART,XDOM.TRUE)
+XML.STATUS = XDOMAddChild(sheet.worksheet.tableParts(SHEET.IDX),'','',TABLE.PART,XDOM.NODUP)
+*
+XML.STATUS = XDOMGetAttribute(sheet.worksheet.tableParts(SHEET.IDX),'count',T.COUNT)
+XML.STATUS = XDOMSetNodeValue(T.COUNT,TABLE.CNT<SHEET.IDX>)
+
+*
+IF (XML.STATUS NE XML.SUCCESS) THEN
+  MSG = XMLGetError(XML.STATUS,TEXT)
+  T.STATUS<1> = @FALSE
+  T.STATUS<2> = TEXT
+  GOSUB 5000 ;* Error handling
+END
+*
+RETURN
+*
+*
+*****************************************************************************
+4000 * Add to override
+*****************************************************************************
+*
+ATTERAY = ''
+PART.NAME  = '/xl/tables/table' : SUM(TABLE.CNT) : '.xml'
+CONT.TYPE  = 'application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml'
+ATTERAY<1> = 'PartName' : @VM : 'ContentType'
+ATTERAY<2> = PART.NAME   : @VM : CONT.TYPE
+T.STATUS   = MVTX.APPEND.NODE(Content_Types.Types,'Override','',ATTERAY,'',CTYPES)
+GOSUB 5000 ;* Error handling
+*
+RETURN
+*
+*****************************************************************************
+5000 * Error Handling
+*****************************************************************************
+*
+IF NOT(T.STATUS<RESULT$VALUE>) THEN
+  ERR := ' | error: ' : T.STATUS<RESULT$ERROR>
+END
+*
+RETURN
+

@@ -1,0 +1,57 @@
+FUNCTION ADD.ROW(SHEET.IDX,LOCATION)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        21 Dec 2017
+* Project:     MVtoXLSX
+* Description: This function will add a formula to the 
+*              CalcChain table, returning True if successful
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT  = ''
+ATTERAY = ''
+*
+*****************************************************************************
+* Do some work
+*****************************************************************************
+*
+IF NOT(CALC.CNT) THEN
+  *
+  WB.REL.CNT += 1
+  REL.TYPE   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/calcChain'
+  REL.ID     = 'rId' : WB.REL.CNT
+  REL.TARGET = 'calcChain.xml'
+  ATTERAY<1> = 'Type'   : @VM : 'Id'   : @VM : 'Target'
+  ATTERAY<2> = REL.TYPE : @VM : REL.ID : @VM : REL.TARGET
+  *
+  F.STATUS = MVTX.APPEND.NODE(workbook.xml.rels.Relationships,'Relationship','',ATTERAY,'',RELATIONSHIP)
+  *
+  PART.NAME = '/xl/calcChain.xml'
+  CONT.TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml'
+  ATTERAY<1> = 'PartName' : @VM : 'ContentType'
+  ATTERAY<2> = PART.NAME   : @VM : CONT.TYPE
+  F.STATUS = MVTX.APPEND.NODE(Content_Types.Types,'Override','',ATTERAY,'',CTYPES)
+  *
+END
+*
+ATTERAY<1> = 'r' : @VM : 'i'
+ATTERAY<2> = LOCATION : @VM : SHEET.IDX
+F.STATUS = MVTX.APPEND.NODE(calcChain.calcChain,'c','',ATTERAY,'',CALCNODE)
+*
+IF (F.STATUS<RESULT$VALUE>) THEN
+  RESULT = @TRUE
+  CALC.CNT += 1
+END ELSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> = 'Could not append calcChain'
+END
+*
+RETURN RESULT

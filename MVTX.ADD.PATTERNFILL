@@ -1,0 +1,92 @@
+FUNCTION MVTX.ADD.PATTERNFILL(MAP)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        13 Mar 2018
+* Project:     MVtoXLSX
+* Description: This function applies a font's style map to styles.Stylesheet
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+* 
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT     = ''
+ATTERAY    = ''
+ERR.MSG    = ''
+BG.DEFAULT = 'FF000000'
+FG.DEFAULT = 'FFFF0000'
+TP.DEFAULT = 'solid'
+* 
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+F.STATUS = MVTX.APPEND.NODE(styles.styleSheet.fills,'fill','',ATTERAY,'',THIS.FILL)
+GOSUB 5000
+*
+IF (MAP<1,PATTERNFILL$TYPE> EQ '') THEN
+  MAP<1,PATTERNFILL$TYPE> = TP.DEFAULT
+END
+IF (MAP<1,PATTERNFILL$FG.COLOR> EQ '') THEN
+  MAP<1,PATTERNFILL$FG.COLOR> = FG.DEFAULT
+END
+IF (MAP<1,PATTERNFILL$BG.COLOR> EQ '') THEN
+  MAP<1,PATTERNFILL$BG.COLOR> = BG.DEFAULT
+END
+*
+ATTERAY<1> = 'patternType'
+ATTERAY<2> = MAP<1,PATTERNFILL$TYPE>
+*
+F.STATUS = MVTX.APPEND.NODE(THIS.FILL,'patternFill','',ATTERAY,'',P.FILL)
+GOSUB 5000
+*
+FILL.CNT = DCOUNT(MAP,@VM)
+FOR FILL = 1 TO FILL.CNT
+  TAG = ''
+  ATTERAY = ''
+  BEGIN CASE
+    CASE (FILL EQ PATTERNFILL$BG.COLOR)
+      TAG = 'bgColor'
+      ATTERAY<1> = 'rgb'
+      ATTERAY<2> = MAP<1,PATTERNFILL$BG.COLOR>
+    CASE (FILL EQ PATTERNFILL$FG.COLOR)
+      TAG = 'fgColor'
+      ATTERAY<1> = 'rgb'
+      ATTERAY<2> = MAP<1,PATTERNFILL$FG.COLOR>
+    CASE 1
+  END CASE
+  IF (TAG NE '') AND (MAP<1,FILL> NE '') THEN 
+    F.STATUS = MVTX.APPEND.NODE(P.FILL,TAG,'',ATTERAY,'',THIS)
+    GOSUB 5000
+    F.STATUS = XDOMClose(THIS)
+  END
+NEXT FILL
+F.STATUS = XDOMClose(THIS.FILL)
+F.STATUS = XDOMClose(P.FILL)
+*
+F.STATUS = XDOMLocateNode(styles.styleSheet.fills,XDOM.CHILD,1,XDOM.ATTR.NODE,FCOUNT)
+F.STATUS = XDOMSetNodeValue(FCOUNT,DCOUNT(PATTERNFILLS,@AM)+1)
+*
+IF (ERR.MSG EQ '') THEN
+  RESULT = @TRUE
+END ELSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> = @TRUE
+END
+*
+RETURN RESULT
+*
+*****************************************************************************
+5000 * Handle Errors
+*****************************************************************************
+*
+IF NOT(F.STATUS<RESULT$VALUE>) THEN
+  ERR.MSG := ' | error: ' : F.STATUS<RESULT$ERROR>
+END
+*
+RETURN 

@@ -1,0 +1,173 @@
+FUNCTION ADD.ROW(SHEET.IDX,ROW.DATA)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        21 Dec 2017
+* Project:     MVtoXLSX
+* Description: This function will add a row of cells to a worksheet
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+ATTERAY = ''
+RESULT  = ''
+MSG     = ''
+*
+*****************************************************************************
+* Do some work
+*****************************************************************************
+*
+IF (WB.ACTIVE) AND (WS.ACTIVE<SHEET.IDX>) THEN
+  WS.ROW.CNT<SHEET.IDX> += 1
+  COL.CNT = DCOUNT(ROW.DATA,@AM)
+  OKAY    = @TRUE
+  GOSUB 1000 ;* Add a new sheetData child row
+  IF (OKAY) THEN
+    FOR COL = 1 TO COL.CNT
+      OKAY = @TRUE
+      LOCATION = MVTX.GETCOL(COL) : WS.ROW.CNT<SHEET.IDX>
+      GOSUB 2000 ;* Add cell
+      GOSUB 2500 ;* Add values and formulas
+      GOSUB 2750 ;* Set column map
+      *
+      XML.STATUS = XDOMClose(CELL)
+    NEXT COL
+    *
+  END
+  IF (OKAY) THEN
+    IF (COL.CNT GT WS.COL.CNT<SHEET.IDX>) THEN
+      WS.COL.CNT<SHEET.IDX> = COL.CNT
+    END
+    GOSUB 3000 ;* Adjust the sheet dimensions
+    RESULT = WS.ROW.CNT<SHEET.IDX>
+  END ELSE
+    RESULT<RESULT$VALUE> = @FALSE
+    RESULT<RESULT$ERROR> = 'Row insertion error: ' : MSG
+  END
+  XML.STATUS = XDOMClose(ROW)
+END ELSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> := 'Invalid workbook/worksheet combination.'
+END
+*
+RETURN RESULT
+*
+*****************************************************************************
+1000 * Add a new sheetData child row
+*****************************************************************************
+*
+ATTERAY<1> = 'r'
+ATTERAY<2> = WS.ROW.CNT<SHEET.IDX>
+ROW.STATUS = MVTX.APPEND.NODE(sheet.worksheet.sheetData(SHEET.IDX),'row','',ATTERAY,'',ROW)
+IF NOT(ROW.STATUS<RESULT$VALUE>) THEN
+  OKAY = @FALSE
+  MSG = ROW.STATUS<RESULT$ERROR>
+END
+*
+RETURN
+*
+*****************************************************************************
+2000 * Add cell
+*****************************************************************************
+*
+CELL.DATA = MVTX.INFER.TYPE(ROW.DATA<COL>)
+*
+ATTERAY = ''
+VMC = 1
+ATTERAY<1,VMC> = 'r'
+ATTERAY<2,VMC> = LOCATION
+VMC += 1
+IF (CELL.DATA<1,CELL$TYPE>) THEN
+  ATTERAY<1,VMC> = 't'
+  ATTERAY<2,VMC> = CELL.DATA<1,CELL$TYPE>
+  VMC += 1
+END
+IF (CELL.DATA<1,CELL$STYLE>) THEN
+  ATTERAY<1,VMC> = 's'
+  ATTERAY<2,VMC> = CELL.DATA<1,CELL$STYLE>
+END
+*
+ROW.STATUS = MVTX.APPEND.NODE(ROW,'c','',ATTERAY,'',CELL)
+IF NOT(ROW.STATUS<RESULT$VALUE>) THEN
+  OKAY = @FALSE
+  MSG := ROW.STATUS<RESULT$ERROR> : ' [Col ' : COL : '] '
+END
+*
+RETURN
+*
+*****************************************************************************
+2500 * Add values and formulas
+*****************************************************************************
+*
+IF (CELL.DATA<1,CELL$FORMULA>) THEN
+  ROW.STATUS = MVTX.ADD.FORMULA(SHEET.IDX,LOCATION)
+  ROW.STATUS = MVTX.APPEND.NODE(CELL,'f',CELL.DATA<1,CELL$FORMULA>,'','',FORMULA)
+  XML.STATUS = XDOMClose(FORMULA)
+  IF NOT(ROW.STATUS<RESULT$VALUE>) THEN
+    OKAY = @FALSE
+    MSG := ROW.STATUS<RESULT$ERROR> : ' [Col ' : COL : '] '
+  END
+END
+IF (CELL.DATA<1,CELL$VALUE> NE '') THEN
+  IF (CELL.DATA<1,CELL$TYPE> EQ 's') THEN
+    CELL.VALUE = MVTX.ADD.STRING(CELL.DATA<1,CELL$VALUE>)
+  END ELSE
+    CELL.VALUE = CELL.DATA<1,CELL$VALUE>
+  END
+  *
+  ROW.STATUS = MVTX.APPEND.NODE(CELL,'v',CELL.VALUE,'','',VAL)
+  XML.STATUS = XDOMClose(VAL)
+  IF NOT(ROW.STATUS<RESULT$VALUE>) THEN
+    OKAY = @FALSE
+    MSG = ROW.STATUS<RESULT$ERROR>
+  END
+END
+*
+RETURN
+*
+*****************************************************************************
+2750 * Adjust the column map
+*****************************************************************************
+*
+SIZE = LEN(CELL.DATA<1,CELL$VALUE>)
+IF (SIZE) THEN
+  WIDTH = SIZE + (3*SIZE)/SQRT(SIZE)
+END ELSE 
+  WIDTH = 20
+END
+*
+ROW.STATUS = MVTX.GET.CHILD(sheet.worksheet.cols(SHEET.IDX),COL,COLNODE)
+IF (ROW.STATUS<RESULT$ERROR>) THEN
+  ATTERAY<1> = 'min' : @VM : 'max' : @VM : 'width' : @VM : 'customWidth'
+  ATTERAY<2> = COL   : @VM : COL   : @VM : WIDTH   : @VM : '1'
+  ROW.STATUS = MVTX.APPEND.NODE(sheet.worksheet.cols(SHEET.IDX),'col','',ATTERAY,'',COLNODE)
+END ELSE
+  XML.STATUS = XDOMGetAttribute(COLNODE,'width',WIDTH.NODE)
+  XML.STATUS = XDOMGetNodeValue(WIDTH.NODE,WIDTH.VALUE)
+  IF (WIDTH.VALUE < WIDTH) THEN
+    XML.STATUS = XDOMSetNodeValue(WIDTH.NODE,WIDTH)
+  END
+END
+XML.STATUS = XDOMClose(COLNODE)
+XML.STATUS = XDOMClose(WIDTH.NODE)
+*
+RETURN
+*
+*****************************************************************************
+3000 * Adjust the sheet dimensions
+*****************************************************************************
+*
+SHEET.CORD = 'A1:' : MVTX.GETCOL(WS.COL.CNT<SHEET.IDX>) : WS.ROW.CNT<SHEET.IDX>
+
+XML.STATUS = XDOMGetAttribute(sheet.worksheet.dimension(SHEET.IDX),'ref',REF)
+XML.STATUS = XDOMSetNodeValue(REF,SHEET.CORD)
+XML.STATUS = XDOMClose(REF)
+*
+RETURN
+

@@ -1,0 +1,131 @@
+FUNCTION ADD.STYLE(STYLEMAP)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        09 Mar 2018
+* Project:     MVtoXLSX
+* Description: This function map a custom style into the MVTX Common. Note:
+*              All style indexes are 0 indexed, so locate pointers need to
+*              be de-incremented by 1.
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+* 
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT  = ''
+ATTERAY = ''
+STYLE   = STYLE.INDEX<1>
+ERR.MSG = ''
+* 
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+IF (STYLEMAP<STYLES$BORDERS> NE '') THEN
+  MAP = BORDERS
+  IDX = STYLES$BORDERS
+  GOSUB 1000 ;*Add borders
+  BORDERS = MAP
+END
+*
+IF (STYLEMAP<STYLES$FONTS> NE '') THEN
+  MAP = FONTS
+  IDX = STYLES$FONTS
+  GOSUB 1000 ;*Add number format
+  FONTS = MAP
+END
+*
+IF (STYLEMAP<STYLES$PATTERNFILLS> NE '') THEN
+  MAP = PATTERNFILLS
+  IDX = STYLES$PATTERNFILLS
+  GOSUB 1000 ;*Add patterns/fills
+  PATTERNFILLS = MAP
+END
+*
+IF (STYLEMAP<STYLES$NUMFORMATS> NE '') THEN
+  MAP = NUMFORMATS
+  IDX = STYLES$NUMFORMATS
+  GOSUB 1000 ;* Add number formats
+  NUMFORMATS = MAP
+END
+*
+IF (STYLE NE '') AND (ERR.MSG EQ '') THEN
+  LOCATE(STYLE,STYLE.INDEX;S.PTR) ELSE
+    STYLE.STATUS = MVTX.STYLE.ADD(STYLE,OPTS)
+    GOSUB 9000 ;* Error handling
+  END
+END
+*
+IF (ERR.MSG EQ '') THEN
+  *
+  STYLE.INDEX<S.PTR> = STYLE
+  *
+  RESULT = S.PTR - 1  ;* Styles are '0' indexed
+END ELSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> = ERR.MSG
+END
+*
+RETURN RESULT
+* 
+*****************************************************************************
+1000 * Add Style Element
+*****************************************************************************
+*
+LOCATE(STYLEMAP<IDX>,MAP;PTR) THEN
+  IF (IDX NE STYLES$NUMFORMATS) THEN
+    STYLE<1,IDX> = PTR - 1  ;*This style already exists
+  END ELSE
+    *Numformats don't reference the index of their stylesheet section, but rather
+    *the numFmtId attribute of their individual entry. 
+    STATUS = XDOMLocateNode(styles.styleSheet.numFmts,XDOM.CHILD,PTR,XDOM.ELEMENT.NODE,NUMFMT)
+    STATUS = XDOMGetAttribute(NUMFMT,'numFmtId', NUMFMTID) 
+    STATUS = XDOMGetNodeValue(NUMFMTID,ID.VALUE)
+    IF (STATUS = XML.SUCCESS) THEN
+      STYLE<1,IDX> = ID.VALUE
+    END ELSE
+      IF (STYLEMAP<IDX,NUMFORMAT$ID> NE '') THEN        ;*If the numformat ID is assigned directly (pre-loaded native formats)
+        STYLE<1,IDX> = STYLEMAP<IDX,NUMFORMAT$ID>       ;*then you just want to assign it to the style.
+      END
+    END
+  END
+END ELSE
+  *
+  BEGIN CASE
+    CASE (IDX EQ STYLES$BORDERS)
+      STYLE.STATUS = MVTX.ADD.BORDER(STYLEMAP<IDX>)
+    CASE (IDX EQ STYLES$FONTS)
+      STYLE.STATUS = MVTX.ADD.FONT(STYLEMAP<IDX>)
+    CASE (IDX EQ STYLES$PATTERNFILLS)
+      STYLE.STATUS = MVTX.ADD.PATTERNFILL(STYLEMAP<IDX>)
+    CASE (IDX EQ STYLES$NUMFORMATS)
+      STYLE.STATUS = MVTX.ADD.NUMFORMAT(STYLEMAP<IDX>)
+  END CASE
+  *
+  GOSUB 9000
+  IF (STYLE.STATUS<RESULT$VALUE>) THEN
+    MAP<PTR> = STYLEMAP<IDX>
+    IF (IDX NE STYLES$NUMFORMATS) THEN
+      STYLE<1,IDX> = PTR - 1
+    END ELSE
+      STYLE<1,IDX> = STYLE.STATUS<RESULT$VALUE>
+    END
+  END
+END
+*
+RETURN
+* 
+*****************************************************************************
+9000 * Error Handling
+*****************************************************************************
+*
+IF NOT(STYLE.STATUS<RESULT$VALUE>) THEN
+  ERR.MSG := ' | error: ' : STYLE.STATUS<RESULT$ERROR>
+END
+*
+RETURN 

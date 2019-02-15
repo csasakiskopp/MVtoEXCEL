@@ -1,0 +1,34 @@
+FUNCTION MVTX.GET.CHILD.NODE(PARENT.HANDLE,IDX,CHILD.HANDLE)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        20 Dec 2017
+* Project:     MVtoXLSX 
+* Description: This function will find a child of a node based on name or 
+*              index, assigning the value to CHILD.HANDLE
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+RESULT = ''
+IDX = INT(IDX)
+IF IDX THEN
+  XML.STATUS = XDOMLocateNode(PARENT.HANDLE,XDOM.CHILD,IDX,XDOM.ELEMENT.NODE,CHILD.HANDLE)
+  IF (XML.STATUS EQ XML.SUCCESS) THEN
+    RESULT = @TRUE
+  END ELSE
+    RESULT<RESULT$VALUE> = @FALSE
+    RESULT<RESULT$ERROR> = 'Could not locate node index ' : IDX
+  END
+END ELSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> = 'Improper data type, non-numeric index.'
+END
+*
+RETURN RESULT

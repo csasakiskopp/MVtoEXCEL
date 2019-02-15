@@ -1,0 +1,81 @@
+FUNCTION CLEAR.COMMON
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        20 Dec 2017
+* Project:     MV to Excel
+* Description: This function closes all open DOM handles and clears the 
+*              common block.
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Close DOM handles
+*****************************************************************************
+*
+OKAY    = @TRUE
+IF(WB.ACTIVE) THEN
+  SUCCESS = ''
+  *
+  SUCCESS<-1> = XDOMClose(workbook.xml.rels)
+  SUCCESS<-1> = XDOMClose(workbook.xml.rels.Relationships)
+  SUCCESS<-1> = XDOMClose(theme)
+  SUCCESS<-1> = XDOMClose(styles)
+  SUCCESS<-1> = XDOMClose(workbook)
+  SUCCESS<-1> = XDOMClose(workbook.workbook)
+  SUCCESS<-1> = XDOMClose(Content_Types)
+  SUCCESS<-1> = XDOMClose(Content_Types.Types)
+  SUCCESS<-1> = XDOMClose(rels)
+  SUCCESS<-1> = XDOMClose(app)
+  SUCCESS<-1> = XDOMClose(app.HeadingPairs.vector.variant.i4)
+  SUCCESS<-1> = XDOMClose(app.TitlesOfParts)
+  SUCCESS<-1> = XDOMClose(app.TitlesOfParts.vector)
+  SUCCESS<-1> = XDOMClose(app.TitlesOfParts.vector.lpstr)
+  SUCCESS<-1> = XDOMClose(core)
+  *
+  SUCCESS<-1> = XDOMClose(calcChain)
+  SUCCESS<-1> = XDOMClose(calcChain.calcChain)
+  SUCCESS<-1> = XDOMClose(sharedStrings)
+  SUCCESS<-1> = XDOMClose(sharedStrings.sst)
+  SUCCESS<-1> = XDOMClose(workbook.workbook.sheets)
+  *
+  FOR TABLE.LOOP = 1 TO SUM(TABLE.CNT)
+    SUCCESS<-1> = XDOMClose(table(TABLE.LOOP))
+  NEXT TABLE.LOOP
+  *
+  FOR WS.LOOP = 1 TO SHEET.CNT
+    ERR = MVTX.CLOSE.SHEET(WS.LOOP)
+    IF NOT(ERR<RESULT$VALUE>) THEN
+      SUCCESS<-1> = ERR<RESULT$ERROR>
+    END ELSE
+      SUCCESS<-1> = @TRUE
+    END
+  NEXT WS.LOOP
+  *
+  LOCATE(XML.ERROR,SUCCESS;PTR) THEN
+    OKAY<1> = @FALSE
+    OKAY<2> = 'Failed to close DOM structure, index [' : PTR : ']'
+  END
+  *
+  SHEET.CNT  = 0
+  STRING.CNT = 0
+  CALC.CNT   = 0
+  WB.REL.CNT = 0
+  WS.REL.CNT = 0
+  WS.COL.CNT = 0
+  WS.ROW.CNT = 0
+  TABLE.CNT  = 0  
+  *  
+  WB.ACTIVE  = @FALSE
+  *
+  CMD = 'DELETE.FILE MVTX.STRINGWORK' : @UDTNO : ' FORCE'
+  EXECUTE CMD CAPTURING OUTPUT
+  *
+  CLOSE F.TEMPLATE
+  *
+END
+*
+RETURN OKAY

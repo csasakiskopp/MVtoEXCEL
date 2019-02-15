@@ -1,0 +1,9 @@
+DEFFUN MAKE.WB(OWNER)                         ;*Activates a workbook. Will clear any existing workbook
+DEFFUN WB.ACTIVE                              ;*Returns TRUE/FALSE as to whether a Workbook is active
+DEFFUN ADD.SHEET(SHEETNAME,OPTS)              ;*Add a sheet to a workbook. Returns a sheet index number
+DEFFUN ADD.ROW(SHEET.INDEX,CELL.DATA)         ;*Add a row of spreadsheet data to a worksheet
+DEFFUN ADD.STYLE(STYLE.DATA)                  ;*Add a defined cell style. Returns a style index number
+DEFFUN ADD.TABLE(SHEET.INDEX,TABLE.DATA)      ;*Add a defined table area to a worksheet
+DEFFUN WRITE.WB(BOOK.NAME,DIR.LOCATION)       ;*Write a completed workbook to a location in linux
+DEFFUN ADD.TABLE(SHEET.IDX,TABLE.DATA)        ;*Add a defined data-area to a worksheet
+DEFFUN GET.ROW.CNT(SHEET.IDX)                  ;*Retrieve the total row count for a given worksheet

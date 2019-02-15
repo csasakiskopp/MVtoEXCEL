@@ -1,0 +1,41 @@
+*MVTX.COMMON
+*
+*XDOM Handles
+*All handles are in proper case to distinguish them from 
+*other variables, with a descriptive xpath delimited by '.'
+*
+*  Global
+    COMMON /MVTX/ Content_Types, Content_Types.Types, rels, core, app                                  
+    COMMON /MVTX/ app.TitlesOfParts,app.TitlesOfParts.vector,app.TitlesOfParts.vector.lpstr
+    COMMON /MVTX/ app.HeadingPairs.vector.variant.i4
+*  Workbook
+    COMMON /MVTX/ workbook.xml.rels, workbook.xml.rels.Relationships, calcChain, calcChain.calcChain
+    COMMON /MVTX/ sharedStrings, sharedStrings.sst, theme, styles
+    COMMON /MVTX/ workbook, workbook.workbook, workbook.workbook.sheets, workbook.workbook.sheets.sheet
+*  Worksheet
+    COMMON /MVTX/ ws.xml.rels(100), ws.xml.rels.Relationships(100), sheet(100), sheet.worksheet(100), sheet.worksheet.sheetData(100) 
+    COMMON /MVTX/ sheet.worksheet.dimension(100), sheet.worksheet.cols(100)
+    COMMON /MVTX/ sheet.worksheet.tableParts(100), sheet.worksheet.mergeCells(100)
+    
+*  Table
+    COMMON /MVTX/ table(100),tablePart(100)
+*
+*  Style
+    COMMON /MVTX/ BORDERS,PATTERNFILLS,FONTS,NUMFORMATS,STYLE.INDEX
+    COMMON /MVTX/ styles.styleSheet, styles.styleSheet.cellXfs, styles.styleSheet.borders
+    COMMON /MVTX/ styles.styleSheet.numFmts, styles.styleSheet.fills, styles.styleSheet.fonts
+*
+*Counter Variables
+*WS attributes = sheet index
+COMMON /MVTX/ SHEET.CNT, STRING.CNT, CALC.CNT
+COMMON /MVTX/ WB.REL.CNT, WS.REL.CNT, WS.COL.CNT, WS.ROW.CNT
+COMMON /MVTX/ TABLE.CNT
+
+*Status Variables
+COMMON /MVTX/ WB.ACTIVE, WS.ACTIVE
+
+*File Buffer
+COMMON /MVTX/ F.STRING.WORK, F.TEMPLATE
+*
+*Name References
+COMMON /MVTX/ TABLE.NAMES, WS.NAMES

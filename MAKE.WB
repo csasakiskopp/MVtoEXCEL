@@ -1,0 +1,352 @@
+FUNCTION MAKE.WB(OWNER)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        21 Dec 2017
+* Project:     MVtoXLSX
+* Description: This function will load workbook template XML into DOM 
+*              structures, and load these DOM structures into the 
+*              MVTX common block
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+STATUS  = MVTX.CLEAR.COMMON()
+ERROR   = ''
+OKAY    = @TRUE
+*
+*****************************************************************************
+* Open Files
+*****************************************************************************
+*
+STRINGWORK = 'MVTX.STRINGWORK' : @UDTNO
+*
+NO.OPEN = ''
+*
+OPEN 'MVTX.TEMPLATE' TO F.TEMPLATE    ELSE NO.OPEN := ' TEMPLATE'
+OPEN 'VOC'           TO F.VOC         ELSE NO.OPEN := ' VOC'
+*
+READ EXISTS FROM F.VOC,STRINGWORK THEN
+  CMD = 'CLEAR-FILE ' : STRINGWORK
+  EXECUTE CMD CAPTURING OUTPUT
+END ELSE
+  CMD = 'CREATE-FILE ' : STRINGWORK : ' 1 1009'
+  EXECUTE CMD CAPTURING OUTPUT
+END
+*
+OPEN STRINGWORK      TO F.STRING.WORK ELSE NO.OPEN := ' STRINGWORK'
+*
+IF (NO.OPEN NE '') THEN
+  ERROR<RESULT$VALUE> = @FALSE
+  ERROR<RESULT$ERROR> = 'Could not open ' : NO.OPEN
+  RETURN ERROR
+END
+*
+*****************************************************************************
+* Get the templates
+*****************************************************************************
+*
+ATTERAY = ''
+ERR.MSG = ''
+*
+*Build the global xml files
+*
+GOSUB 100  ;* [Content_Types]
+GOSUB 200  ;* Global Rels
+GOSUB 300  ;* app
+GOSUB 400  ;* core
+*
+*Build the Workbook xml files
+*
+GOSUB 500  ;* workbook
+GOSUB 600  ;* calcChain
+GOSUB 700  ;* sharedStrings
+GOSUB 1000 ;* workbook.xml.rels
+*
+GOSUB 1100 ;* Set counter variables
+GOSUB 1200 ;* theme
+GOSUB 1300 ;* Stylesheet
+*
+IF (OKAY) THEN
+  WB.ACTIVE = @TRUE
+  RETURN WB.ACTIVE
+END ELSE
+  STATUS = MVTX.CLEAR.COMMON() ;*Close any dom handles that may have been established
+  ERROR<RESULT$VALUE> = @FALSE
+  ERROR<RESULT$ERROR> = ERR.MSG
+  RETURN ERROR  
+END
+*
+*
+*****************************************************************************
+100 * [Content_Types]
+*****************************************************************************
+*
+TEMPLATE = 'CONTENT.TYPES'
+*
+WB.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,Content_Types)
+GOSUB 5000                                                      ;* Error handling
+*
+WB.STATUS = MVTX.GET.CHILD(Content_Types,1,Content_Types.Types)
+GOSUB 5000                                                      ;* Error handling
+*
+PART.NAME = '/xl/workbook.xml'
+CONT.TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml'
+ATTERAY<1> = 'PartName' : @VM : 'ContentType'
+ATTERAY<2> = PART.NAME   : @VM : CONT.TYPE
+WB.STATUS = MVTX.APPEND.NODE(Content_Types.Types,'Override','',ATTERAY,'',CTYPES)
+*
+RETURN
+*
+*****************************************************************************
+200 * Global Rels
+*****************************************************************************
+*
+TEMPLATE = '.RELS'
+*
+WB.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,rels)
+GOSUB 5000                                                       ;* Error handling
+*
+RETURN
+*
+*****************************************************************************
+300 * app
+*****************************************************************************
+*
+TEMPLATE = 'APP'
+*
+WB.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,app)
+GOSUB 5000                                                       ;* Error handling
+*
+WB.STATUS = MVTX.GET.CHILD(app,1,PROPERTIES)
+WB.STATUS = MVTX.GET.CHILD(PROPERTIES,4,HEADINGPAIRS)
+WB.STATUS = MVTX.GET.CHILD(HEADINGPAIRS,1,VT.VECTOR)
+WB.STATUS = MVTX.GET.CHILD(VT.VECTOR,2,VT.VARIANT)
+WB.STATUS = MVTX.GET.CHILD(VT.VARIANT,1,app.HeadingPairs.vector.variant.i4)
+GOSUB 5000                                                       ;* Error handling
+*
+WB.STATUS = MVTX.GET.CHILD(PROPERTIES,5,app.TitlesOfParts)
+WB.STATUS = MVTX.GET.CHILD(app.TitlesOfParts,1,app.TitlesOfParts.vector)
+*
+*Since the below node will need to be copied and added as a child to *.vector, it
+*is expedient to remove the template node to be altered, cloned, and added later.
+*
+WB.STATUS = MVTX.REMOVE.NODE(app.TitlesOfParts.vector,1,app.TitlesOfParts.vector.lpstr)
+GOSUB 5000                                                       ;* Error handling
+*
+PART.NAME = '/docProps/app.xml'
+CONT.TYPE = 'application/vnd.openxmlformats-officedocument.extended-properties+xml'
+ATTERAY<1> = 'PartName' : @VM : 'ContentType'
+ATTERAY<2> = PART.NAME   : @VM : CONT.TYPE
+*
+WB.STATUS = MVTX.APPEND.NODE(Content_Types.Types,'Override','',ATTERAY,'',CTYPES)
+GOSUB 5000                                                       ;*Error handling
+*
+RETURN
+*
+*****************************************************************************
+400 * core
+*****************************************************************************
+*
+TEMPLATE  = 'CORE'
+DATE.TIME = OCONV(DATE(),"D4-YMD") : 'T' : OCONV(TIME(),"MTS") : 'Z'
+*
+WB.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,core)
+GOSUB 5000                                                       ;* Error handling
+*
+WB.STATUS = MVTX.GET.CHILD(core,1,CORE.PROPERTIES)
+WB.STATUS = MVTX.GET.CHILD(CORE.PROPERTIES,1,CREATOR)
+WB.STATUS = MVTX.GET.CHILD(CORE.PROPERTIES,2,MOD.BY)
+WB.STATUS = MVTX.GET.CHILD(CORE.PROPERTIES,3,CREATE.DATE)
+WB.STATUS = MVTX.GET.CHILD(CORE.PROPERTIES,4,MOD.DATE)
+GOSUB 5000                                                       ;* Error handling
+*
+*Add the owner and Creator to the core properties of the workbook
+WB.STATUS = MVTX.APPEND.NODE('','',OWNER,'','',CREATOR)
+WB.STATUS = MVTX.APPEND.NODE('','',OWNER,'','',MOD.BY)
+WB.STATUS = MVTX.APPEND.NODE('','',DATE.TIME,'','',CREATE.DATE)
+WB.STATUS = MVTX.APPEND.NODE('','',DATE.TIME,'','',MOD.DATE)
+GOSUB 5000                                                       ;* Error handling
+*
+PART.NAME = '/docProps/core.xml'
+CONT.TYPE = 'application/vnd.openxmlformats-package.core-properties+xml'
+ATTERAY<1> = 'PartName' : @VM : 'ContentType'
+ATTERAY<2> = PART.NAME   : @VM : CONT.TYPE
+*
+WB.STATUS = MVTX.APPEND.NODE(Content_Types.Types,'Override','',ATTERAY,'',CTYPES)
+GOSUB 5000                                                       ;*Error handling
+*
+RETURN
+*
+*****************************************************************************
+500 * workbook
+*****************************************************************************
+*
+TEMPLATE = 'WORKBOOK'
+*
+WB.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,workbook)
+GOSUB 5000                                                       ;*Error handling
+*
+WB.STATUS = MVTX.GET.CHILD(workbook,1,workbook.workbook)
+GOSUB 5000                                                       ;*Error handling
+*
+WB.STATUS = MVTX.GET.CHILD(workbook.workbook,4,workbook.workbook.sheets)
+GOSUB 5000                                                       ;*Error handling
+*
+*To circumvent some of the special difficulties with XDOM and namespaces the fillable,
+*part of this XDOM document needs to be removed and used as a template that can
+*be filled in later, cloned and inserted without disturbing the 'delicate' namespaces.
+*
+WB.STATUS = MVTX.REMOVE.NODE(workbook.workbook.sheets,1,workbook.workbook.sheets.sheet)
+GOSUB 5000                                                       ;*Error handling
+*
+RETURN
+*
+*****************************************************************************
+600 * calcChain
+*****************************************************************************
+*
+TEMPLATE = 'CALC.CHAIN'
+*
+WB.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,calcChain)
+GOSUB 5000                                                       ;*Error handling
+*
+WB.STATUS = MVTX.GET.CHILD(calcChain,1,calcChain.calcChain)
+GOSUB 5000                                                       ;*Error handling
+*
+RETURN
+*
+*****************************************************************************
+700 * sharedStrings
+*****************************************************************************
+*
+TEMPLATE = 'SHARED.STRINGS'
+*
+WB.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,sharedStrings)
+GOSUB 5000                                                       ;*Error handling
+*
+WB.STATUS = MVTX.GET.CHILD(sharedStrings,1,sharedStrings.sst)
+GOSUB 5000                                                       ;*Error handling
+*
+RETURN
+*
+*****************************************************************************
+1000 * workbook.xml.rels
+*****************************************************************************
+*
+TEMPLATE = 'WORKBOOK.XML.RELS'
+*
+WB.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,workbook.xml.rels)
+GOSUB 5000                                                       ;*Error handling
+*
+WB.STATUS = MVTX.GET.CHILD(workbook.xml.rels,1,workbook.xml.rels.Relationships)
+GOSUB 5000                                                       ;*Error handling
+*
+RETURN
+*
+*****************************************************************************
+1100 * Set counter variables
+*****************************************************************************
+*
+SHEET.CNT   = 0
+STRIN.CNT   = 0
+CALC.CNT    = 0
+WS.COL.CNT  = ''
+WB.REL.CTN  = 0
+WS.REL.CNT  = ''
+WS.ROW.CNT  = ''
+TABLE.NAMES = ''
+WS.NAMES    = ''
+*
+RETURN
+*
+*****************************************************************************
+1200 * theme
+*****************************************************************************
+*
+TEMPLATE = 'THEME'
+*
+WB.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,theme)
+GOSUB 5000                                                       ;*Error handling
+*
+PART.NAME = '/xl/theme/theme1.xml'
+CONT.TYPE = 'application/vnd.openxmlformats-officedocument.theme+xml'
+ATTERAY<1> = 'PartName' : @VM : 'ContentType'
+ATTERAY<2> = PART.NAME   : @VM : CONT.TYPE
+*
+WB.STATUS = MVTX.APPEND.NODE(Content_Types.Types,'Override','',ATTERAY,'',CTYPES)
+GOSUB 5000                                                       ;*Error handling
+*
+WB.REL.CNT += 1
+REL.TYPE   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme'
+REL.ID     = 'rId' : WB.REL.CNT
+REL.TARGET = 'theme/theme1.xml'
+ATTERAY<1> = 'Type' : @VM : 'Id' : @VM : 'Target'
+ATTERAY<2> = REL.TYPE : @VM : REL.ID : @VM : REL.TARGET
+*
+WB.STATUS = MVTX.APPEND.NODE(workbook.xml.rels.Relationships,'Relationship','',ATTERAY,'',RELATIONSHIP1)
+GOSUB 5000                                                       ;*Error handling
+*
+RETURN
+*
+*****************************************************************************
+1300 * style
+*****************************************************************************
+*
+TEMPLATE = 'STYLE'
+*
+WB.STATUS = MVTX.GET.TEMPLATE(TEMPLATE,styles)
+GOSUB 5000                                                       ;*Error handling
+*
+WB.STATUS = MVTX.GET.CHILD(styles,1,styles.styleSheet)
+WB.STATUS = MVTX.GET.CHILD(styles.styleSheet,1,styles.styleSheet.numFmts)
+WB.STATUS = MVTX.GET.CHILD(styles.styleSheet,2,styles.styleSheet.fonts)
+WB.STATUS = MVTX.GET.CHILD(styles.styleSheet,3,styles.styleSheet.fills)
+WB.STATUS = MVTX.GET.CHILD(styles.styleSheet,4,styles.styleSheet.borders)
+WB.STATUS = MVTX.GET.CHILD(styles.styleSheet,6,styles.styleSheet.cellXfs)
+GOSUB 5000                                                       ;*Error handling
+*
+PART.NAME = '/xl/styles.xml'
+CONT.TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml'
+ATTERAY<1> = 'PartName' : @VM : 'ContentType'
+ATTERAY<2> = PART.NAME   : @VM : CONT.TYPE
+*
+WB.STATUS = MVTX.APPEND.NODE(Content_Types.Types,'Override','',ATTERAY,'',CTYPES)
+GOSUB 5000                                                       ;*Error handling
+*
+WB.REL.CNT += 1
+REL.TYPE   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles'
+REL.ID     = 'rId' : WB.REL.CNT
+REL.TARGET = 'styles.xml'
+ATTERAY<1> = 'Type' : @VM : 'Id' : @VM : 'Target'
+ATTERAY<2> = REL.TYPE : @VM : REL.ID : @VM : REL.TARGET
+*
+WB.STATUS = MVTX.APPEND.NODE(workbook.xml.rels.Relationships,'Relationship','',ATTERAY,'',RELATIONSHIP2)
+GOSUB 5000                                                       ;*Error handling
+*
+STYLE.INDEX     = 0 : @VM : 0 : @VM : 0 : @VM : 0 : @VM : 0
+BORDERS         = STR(@VM,9)
+PATTERNFILLS    = 'none' : @VM : @VM
+PATTERNFILLS<2> = 'gray125' : @VM : @VM   ;*patternFill defaults 1 and 2
+FONTS           = 'Times New Roman' : @VM : 'FF000000' : @VM : '10' : @VM : @VM : @VM : @VM 
+NUMFORMATS      = '' : @VM : '"$"#,##0_);[Red]\("$";#,##0\)'
+*
+RETURN
+*
+*
+*****************************************************************************
+5000 * Error handling
+*****************************************************************************
+*
+IF NOT(WB.STATUS<RESULT$VALUE>) THEN
+  ERR.MSG := ' |' : TEMPLATE : ' error: ' : WB.STATUS<RESULT$ERROR>
+  OKAY = @FALSE
+END
+*
+RETURN

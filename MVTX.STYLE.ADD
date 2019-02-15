@@ -1,0 +1,69 @@
+FUNCTION MVTX.STYLE.ADD(MAP,OPTS)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        13 Mar 2018
+* Project:     MVtoXLSX
+* Description: This function adds an cellXFS node that describes which sub-styles
+*              it uses. This node can be applied to each cell through its 
+*              index number (0 indexed)
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+* 
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT  = ''
+ATTERAY = ''
+ERR.MSG = ''
+*
+* 
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+RAY.PTR = 1
+ATTERAY<1,RAY.PTR> = 'xfId'
+ATTERAY<2,RAY.PTR> = '0'
+RAY.PTR += 1
+ATTERAY<1,RAY.PTR> = 'borderId'
+ATTERAY<2,RAY.PTR> = MAP<1,STYLES$BORDERS>
+RAY.PTR += 1
+ATTERAY<1,RAY.PTR> = 'fillId'
+ATTERAY<2,RAY.PTR> = MAP<1,STYLES$PATTERNFILLS>
+RAY.PTR += 1
+ATTERAY<1,RAY.PTR> = 'fontId'
+ATTERAY<2,RAY.PTR> = MAP<1,STYLES$FONTS>
+RAY.PTR += 1
+ATTERAY<1,RAY.PTR> = 'numFmtId'
+ATTERAY<2,RAY.PTR> = MAP<1,STYLES$NUMFORMATS>
+RAY.PTR += 1
+*
+IF (MAP<1,STYLES$BORDERS>) THEN
+  ATTERAY<1,RAY.PTR> = 'applyBorder'
+  ATTERAY<2,RAY.PTR> = @TRUE
+  RAY.PTR += 1
+END
+IF (MAP<1,STYLES$FONTS>) THEN
+  ATTERAY<1,RAY.PTR> = 'applyFont'
+  ATTERAY<2,RAY.PTR> = @TRUE
+  RAY.PTR += 1
+END
+IF (MAP<1,STYLES$PATTERNFILLS>) THEN
+  ATTERAY<1,RAY.PTR> = 'applyFill'
+  ATTERAY<2,RAY.PTR> = @TRUE
+  RAY.PTR += 1
+END
+IF (MAP<1,STYLES$NUMFORMATS>) THEN
+  ATTERAY<1,RAY.PTR> = 'applyNumberFormat'
+  ATTERAY<2,RAY.PTR> = @TRUE
+  RAY.PTR += 1
+END
+*
+RESULT = MVTX.APPEND.NODE(styles.styleSheet.cellXfs,'xf','',ATTERAY,'',XF)
+
+RETURN RESULT

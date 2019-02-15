@@ -1,0 +1,38 @@
+FUNCTION CLOSE.SHEET(IDX)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        20 Dec 2017
+* Project:     MV to Excel
+* Description: This subroutine closes all open DOM handles and clears the 
+*              common block for a single worksheet sheet in a workbook.
+*              Using this when a sheet is complete will save memory when
+*              building large, multi-sheet workbooks. Write the sheet first
+*              if you want to keep it!
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+SUCCESS     = ''
+SUCCESS<-1> = XDOMClose(ws.xml.rels(IDX))
+SUCCESS<-1> = XDOMClose(ws.xml.rels.Relationships(IDX))
+SUCCESS<-1> = XDOMClose(sheet(IDX))
+SUCCESS<-1> = XDOMClose(sheet.worksheet(IDX))
+SUCCESS<-1> = XDOMClose(sheet.worksheet.sheetData(IDX))
+SUCCESS<-1> = XDOMClose(sheet.worksheet.dimension(IDX))
+SUCCESS<-1> = XDOMClose(sheet.worksheet.cols(IDX))
+SUCCESS<-1> = XDOMClose(sheet.worksheet.tableParts(IDX))
+SUCCESS<-1> = XDOMClose(sheet.worksheet.mergeCells(IDX))
+*
+LOCATE(XML.ERROR,SUCCESS;PTR) THEN
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> = SUCCESS<PTR> 
+END ELSE
+  WS.ACTIVE<IDX> = @FALSE
+  SHEET.CNT        -= 1
+  RESULT         = @TRUE
+END
+*
+RETURN RESULT

@@ -1,0 +1,97 @@
+FUNCTION MVTX.ADD.FONT(MAP)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        13 Mar 2018
+* Project:     MVtoXLSX
+* Description: This function applies a font's style map to styles.Stylesheet
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+* 
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT  = ''
+ATTERAY = ''
+ERR.MSG = ''
+D.COLOR = 'FF000000' ;* ARGB hex code for solid black
+D.NAME  = 'Times New Roman'
+D.SIZE  = '10'
+* 
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+F.STATUS = MVTX.APPEND.NODE(styles.styleSheet.fonts,'font','',ATTERAY,'',FONT)
+GOSUB 5000
+IF (MAP<1,FONT$SIZE> EQ '') THEN
+  MAP<1,FONT$SIZE> = D.SIZE
+END
+IF (MAP<1,FONT$COLOR> EQ '') THEN
+  MAP<1,FONT$COLOR> = D.COLOR
+END
+IF (MAP<1,FONT$NAME> EQ '') THEN
+  MAP<1,FONT$NAME> = D.NAME
+END
+*
+STYLE.CNT = DCOUNT(MAP,@VM)
+FOR STYLE = 1 TO STYLE.CNT
+  ATTERAY = ''
+  BEGIN CASE
+    CASE (STYLE EQ FONT$NAME)
+      TAG = 'name'
+      ATTERAY<1> = 'val'
+      ATTERAY<2> = MAP<1,FONT$NAME>
+    CASE (STYLE EQ FONT$COLOR)
+      TAG = 'color'
+      ATTERAY<1> = 'rgb'
+      ATTERAY<2> = MAP<1,FONT$COLOR>
+    CASE (STYLE EQ FONT$SIZE)
+      TAG = 'sz'
+      ATTERAY<1> = 'val'
+      ATTERAY<2> = MAP<1,FONT$SIZE>
+    CASE (STYLE EQ FONT$VERTALIGN)
+      TAG = 'vertAlign'
+      ATTERAY<1> = 'val'
+      ATTERAY<2> = MAP<1,FONT$VERTALIGN>
+    CASE (STYLE EQ FONT$BOLD)
+      TAG = 'b'
+    CASE (STYLE EQ FONT$ITALIC)
+      TAG = 'i'
+    CASE (STYLE EQ FONT$UNDERLINE)
+      TAG = 'u'
+    CASE (STYLE EQ FONT$STRIKE)
+      TAG = 'strike'
+    CASE 1
+  END CASE
+  *
+  IF (MAP<1,STYLE>) THEN
+    F.STATUS = MVTX.APPEND.NODE(FONT,TAG,'',ATTERAY,'',THIS)
+    GOSUB 5000
+    F.STATUS = XDOMClose(THIS)
+  END
+  *
+NEXT STYLE
+*
+IF (ERR.MSG NE '') THEN
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> = ERR.MSG
+END ELSE
+  RESULT = @TRUE
+END
+*
+RETURN RESULT
+*
+*****************************************************************************
+5000 * Handle Errors
+*****************************************************************************
+*
+IF NOT(F.STATUS<RESULT$VALUE>) THEN
+  ERR.MSG := ' | error: ' : F.STATUS<RESULT$ERROR>
+END
+*
+RETURN 

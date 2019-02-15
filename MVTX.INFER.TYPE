@@ -1,0 +1,99 @@
+FUNCTION INFER.TYPE(CELL)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        21 Dec 2017
+* Project:     MVtoXLSX
+* Description: This function will determine what sort of data a cell is and
+*              convert dates/times to an internal format.
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+DEFFUN ADD.STYLE(STYLE)
+*
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+STYLEMAP    = ''
+NEW.CELL    = CELL
+FIRST.FIELD = FIELD(NEW.CELL<1,CELL$VALUE>,' ',1)
+SECND.FIELD = FIELD(NEW.CELL<1,CELL$VALUE>,' ',2)
+IS.DATE     = @FALSE
+IS.TIME     = @FALSE
+IS.STRING   = @FALSE 
+*
+IF (NOT(NUM(FIRST.FIELD))) THEN
+  BEGIN CASE
+    CASE (NEW.CELL<1,CELL$TYPE> EQ 's')
+      IS.STRING = @TRUE
+    CASE (SECND.FIELD NE '') AND (ICONV(SECND.FIELD,"MTS")) AND ICONV(FIRST.FIELD,'D')
+      IS.DATE = @TRUE
+    CASE (SECND.FIELD EQ '') AND ICONV(FIRST.FIELD,'D')
+      IS.DATE = @TRUE
+    CASE (ICONV(FIRST.FIELD,'MTS'))
+      IS.TIME = @TRUE
+    CASE 1
+      IS.STRING = @TRUE     ;*Assume its a string if not a number nothing else
+  END CASE
+END ELSE
+  IF (NEW.CELL<1,CELL$TYPE> EQ 's') OR NOT(NUM(NEW.CELL<1,CELL$VALUE>)) THEN
+    IS.STRING = @TRUE       ;*If the input says its a string, or if the whole thing isn't a number, call it a string.
+  END
+END
+*
+PRECISION 12                ;*Need this many decimals to get the seconds right
+*
+BEGIN CASE
+  CASE (IS.DATE)
+    GOSUB 10000 ;* Date type
+  CASE (IS.TIME)
+    GOSUB 20000 ;* Time type
+  CASE (IS.STRING)
+    NEW.CELL<1,CELL$TYPE> = 's' 
+  CASE 1
+    NEW.CELL<1,CELL$TYPE> = '' ;*if its a number, go for general type
+END CASE
+*
+PRECISION 4                ;*Set this back to where it was
+*
+RETURN NEW.CELL
+*
+*****************************************************************************
+10000 * Date type
+*****************************************************************************
+*
+IDATE = ICONV(FIRST.FIELD,'D') + 24837 ;*Convert to a 1/1/1900 date system
+*
+ITIME = ICONV(SECND.FIELD,'MTS') / 86400 ;* Convert to a decimal time system
+*
+NEW.CELL<1,CELL$VALUE> = IDATE + ITIME
+*NEW.CELL<1,CELL$TYPE>  = 'd' ;*Excel doesn't support the 'd' type
+*
+IF (NEW.CELL<1,CELL$STYLE> EQ '') THEN
+  IF (SECND.FIELD EQ '') THEN
+    STYLEMAP<STYLES$NUMFORMATS,NUMFORMAT$ID> = '14'
+  END ELSE
+    STYLEMAP<STYLES$NUMFORMATS,NUMFORMAT$FORMAT> = 'mm/dd/yyyy\ h:mm:ss'  
+  END
+  NEW.CELL<1,CELL$STYLE> = ADD.STYLE(STYLEMAP)
+END
+*
+RETURN
+*
+*****************************************************************************
+20000 * Time
+*****************************************************************************
+*
+ITIME = ICONV(FIRST.FIELD,'MTS') / 86400 ;* Convert to a decimal time system
+*
+NEW.CELL<1,CELL$VALUE> = ITIME
+*
+IF (NEW.CELL<1,CELL$STYLE> EQ '') THEN
+  STYLEMAP<STYLES$NUMFORMATS,NUMFORMAT$ID> = '21'
+  NEW.CELL<1,CELL$STYLE> = ADD.STYLE(STYLEMAP)
+END
+*
+RETURN

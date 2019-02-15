@@ -1,0 +1,82 @@
+FUNCTION MVTX.ADD.STRING(STRING)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        21 Dec 2017
+* Project:     MVtoXLSX
+* Description: This function will add a string to the string
+*              table and return a string table index integer
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT  = ''
+ATTERAY = ''
+*
+*****************************************************************************
+* Do some work
+*****************************************************************************
+*
+*STRING = CHANGE(STRING,'&','&amp;')
+*STRING = CHANGE(STRING,'<','&lt;')
+*STRING = CHANGE(STRING,'>','&gt;')
+*STRING = CHANGE(STRING,'"','&quot;')
+*STRING = CHANGE(STRING,"'",'&apos;')
+*
+IF (LEN(STRING) GT 100) THEN
+  STATUS = DIGEST('MD5',STRING,1,RESULT)
+  STATUS = ENCODE('Base64A',1,RESULT,1,STRING.ID,1)
+  STRING.ID = STRING[1,20] : '->' : STRING.ID
+END ELSE
+  STRING.ID = STRING
+END
+*
+FOR CHR = 1 TO LEN(STRING)
+  IF SEQ(STRING[CHR,1]) GT 127 THEN
+    SEQ[CHR,1] = ' '
+  END
+NEXT CHR
+*
+READ RESULT FROM F.STRING.WORK,STRING.ID ELSE
+  IF NOT(STRING.CNT) THEN
+    WB.REL.CNT += 1
+    REL.TYPE   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings'
+    REL.ID     = 'rId' : WB.REL.CNT
+    REL.TARGET = 'sharedStrings.xml'
+    ATTERAY<1> = 'Type' : @VM : 'Id' : @VM : 'Target'
+    ATTERAY<2> = REL.TYPE : @VM : REL.ID : @VM : REL.TARGET
+    S.STATUS = MVTX.APPEND.NODE(workbook.xml.rels.Relationships,'Relationship','',ATTERAY,'',RELATIONSHIP)
+    *
+    PART.NAME = '/xl/sharedStrings.xml'
+    CONT.TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml'
+    ATTERAY<1> = 'PartName' : @VM : 'ContentType'
+    ATTERAY<2> = PART.NAME   : @VM : CONT.TYPE
+    S.STATUS = MVTX.APPEND.NODE(Content_Types.Types,'Override','',ATTERAY,'',CTYPES)
+    *
+  END
+  *
+  S.STATUS = XDOMGetAttribute(sharedStrings.sst,'uniqueCount',UC)
+  S.STATUS = XDOMSetNodeValue(UC,STRING.CNT + 1)
+  S.STATUS = XDOMGetAttribute(sharedStrings.sst,'count',C)
+  S.STATUS = XDOMSetNodeValue(C,STRING.CNT + 1)
+  S.STATUS = MVTX.APPEND.NODE(sharedStrings.sst,'si','','','',SI)
+  S.STATUS = MVTX.APPEND.NODE(SI,'t',STRING,'','',T)
+  *
+  IF (S.STATUS<RESULT$VALUE>) THEN
+    RESULT = STRING.CNT
+    WRITE STRING.CNT ON F.STRING.WORK,STRING.ID
+    STRING.CNT += 1
+  END ELSE
+    RESULT<RESULT$VALUE> = @FALSE
+    RESULT<RESULT$ERROR> = 'Could not append string table with: ' : STRING 
+  END
+END
+*
+RETURN RESULT
+
+

@@ -1,0 +1,37 @@
+FUNCTION MVTX.GET.TEMPLATE(ID,HANDLE) 
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        21 Dec 2017
+* Project:     MVtoXLSX
+* Description: This function will load template data into a DOM structure
+*              returning the status and loading the DOM handle.
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+RESULT = ''
+*
+READ ITEM FROM F.TEMPLATE,ID THEN     
+  ITEM = CHANGE(TRIM(ITEM),@AM,' ')
+  XML.STATUS = XDOMOpen(ITEM,XML.FROM.STRING,HANDLE)
+  IF (XML.STATUS EQ XML.SUCCESS) THEN
+    RESULT = @TRUE
+  END ELSE
+    ERR = XMLGetError(XML.STATUS,MSG)
+    RESULT<1> = @FALSE
+    RESULT<2> = 'XML Error: Could not convert template ' : ID : ' ' : MSG
+    DEBUG
+  END
+END ELSE
+  RESULT<1> = @FALSE
+  RESULT<2> = 'Could not read template ' : ID
+END
+*
+RETURN RESULT

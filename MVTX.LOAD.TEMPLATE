@@ -1,0 +1,65 @@
+SUBROUTINE MVTX.LOAD.TEMPLATE
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        07 Jul 2017
+* Project:     Standard
+* Description: This subroutine will call RL0108 to upload a file, and
+*              then transfer the data to a MVTX Template.
+*
+*****************************************************************************
+* Include(s)
+*****************************************************************************
+*
+$INCLUDE ADS.INCLUDE ADS.COMMON
+*
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+PC.NAME   = WORK<2,1>
+OUT.NAME  = WORK<2,2>
+OUT.FILE  = '_HOLD_'
+*
+PARAM     = PC.NAME :',': OUT.FILE :',': OUT.NAME
+*
+*****************************************************************************
+* Open Files
+*****************************************************************************
+*
+NO.OPEN = ''
+*
+OPEN 'MVTX.TEMPLATE' TO F.MVTX.TEMPLATE ELSE NO.OPEN := ' MVTX.TEMPLATE'
+OPEN OUT.FILE        TO F.OUTFILE       ELSE NO.OPEN := ' OUTFILE'
+*
+IF (NO.OPEN NE '') THEN
+  CALL SB.DISP(3,'Could not open: ' : NO.OPEN)
+  RETURN
+END
+*
+*****************************************************************************
+* Upload and write file
+*****************************************************************************
+*
+CALL RL0108
+*
+OKAY = @TRUE
+READU ITEM.OUTFILE FROM F.OUTFILE,OUT.NAME THEN
+  READU ITEM.TEMPLATE FROM F.MVTX.TEMPLATE,OUT.NAME THEN
+    CALL SB.DISP(4,'Template already exits! Overwrite?\Yes,No\0,1')
+    IF (RTN.FLAG) THEN
+      RELEASE F.OUTFILE,OUT.NAME
+      RELEASE F.MVTX.TEMPLATE,OUT.NAME
+      OKAY = @FALSE
+    END
+  END
+  IF (OKAY) THEN
+    ITEM.OUTFILE = CHANGE(ITEM.OUTFILE,CHAR(13),'')
+    WRITE ITEM.OUTFILE ON F.MVTX.TEMPLATE,OUT.NAME
+    DELETE F.OUTFILE,OUT.NAME
+  END
+END ELSE
+  RELEASE F.OUTFILE,OUT.NAME
+END
+*
+RETURN
+

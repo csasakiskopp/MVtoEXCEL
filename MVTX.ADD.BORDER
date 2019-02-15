@@ -1,0 +1,173 @@
+FUNCTION MVTX.ADD.BORDER(MAP)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        13 Mar 2018
+* Project:     MVtoXLSX
+* Description: This function applies a border style map to the xml style sheet
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+* 
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT  = ''
+ATTERAY = ''
+ERR.MSG = ''
+DEFAULT = 'FF000000' ;* ARGB hex code for solid black
+*  
+* 
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+*Add the diagonal directions on initial border creation.
+IF (MAP<1,BORDER$DIAG.UP>) AND(MAP<1,BORDER$DIAG.STYLE> NE '') THEN
+  ATTERAY<1,1> = 'diagonalUp'
+  ATTERAY<2,1> = @TRUE
+END
+IF (MAP<1,BORDER$DIAG.DOWN>) AND(MAP<1,BORDER$DIAG.STYLE> NE '') THEN
+  ATTERAY<1,2> = 'diagonalDown'
+  ATTERAY<2,2> = @TRUE
+END
+*
+B.STATUS = MVTX.APPEND.NODE(styles.styleSheet.borders,'border','',ATTERAY,'',BORDER)
+GOSUB 5000
+*
+GOSUB 1000 ;* Add the border nodes
+GOSUB 2000 ;* Add the border colors
+*
+IF (ERR.MSG NE '') THEN
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> = ERR.MSG
+END ELSE
+  RESULT = @TRUE
+END
+*
+RETURN RESULT
+* 
+*****************************************************************************
+1000 * Add the border nodes
+*****************************************************************************
+*
+IF (MAP<1,BORDER$LEFT.STYLE> NE '') THEN
+  ATTERAY<1> = 'style'
+  ATTERAY<2> = MAP<1,BORDER$LEFT.STYLE>
+END ELSE
+  ATTERAY = ''
+END
+B.STATUS = MVTX.APPEND.NODE(BORDER,'left','',ATTERAY,'',L.BORDER)
+GOSUB 5000
+*
+IF (MAP<1,BORDER$RIGHT.STYLE> NE '') THEN
+  ATTERAY<1> = 'style'
+  ATTERAY<2> = MAP<1,BORDER$RIGHT.STYLE>
+END ELSE
+  ATTERAY = ''
+END
+B.STATUS = MVTX.APPEND.NODE(BORDER,'right','',ATTERAY,'',R.BORDER)
+GOSUB 5000
+*
+IF (MAP<1,BORDER$TOP.STYLE> NE '') THEN
+  ATTERAY<1> = 'style'
+  ATTERAY<2> = MAP<1,BORDER$TOP.STYLE>
+END ELSE
+  ATTERAY = ''
+END
+B.STATUS = MVTX.APPEND.NODE(BORDER,'top','',ATTERAY,'',T.BORDER)
+GOSUB 5000
+*
+IF (MAP<1,BORDER$BOT.STYLE> NE '') THEN
+  ATTERAY<1> = 'style'
+  ATTERAY<2> = MAP<1,BORDER$BOT.STYLE>
+END ELSE
+  ATTERAY = ''
+END
+B.STATUS = MVTX.APPEND.NODE(BORDER,'bottom','',ATTERAY,'',B.BORDER)
+GOSUB 5000
+*
+IF (MAP<1,BORDER$DIAG.STYLE> NE '') THEN
+  ATTERAY<1> = 'style'
+  ATTERAY<2> = MAP<1,BORDER$LEFT.STYLE>
+END ELSE
+  ATTERAY = ''
+END
+B.STATUS = MVTX.APPEND.NODE(BORDER,'diagonal','',ATTERAY,'',D.BORDER)
+GOSUB 5000
+*
+RETURN
+* 
+*****************************************************************************
+2000 * Add the border colors
+*****************************************************************************
+*
+IF (MAP<1,BORDER$LEFT.STYLE> NE '') THEN
+  IF (MAP<1,BORDER$LEFT.COLOR> EQ '') THEN
+    MAP<1,BORDER$LEFT.COLOR> = DEFAULT
+  END
+  ATTERAY<1> = 'rgb'
+  ATTERAY<2> = MAP<1,BORDER$LEFT.COLOR>
+  B.STATUS = MVTX.APPEND.NODE(L.BORDER,'color','',ATTERAY,'',COLOR)
+  GOSUB 5000
+  B.STATUS = XDOMClose(COLOR)
+END
+*
+IF (MAP<1,BORDER$RIGHT.STYLE> NE '') THEN
+  IF (MAP<1,BORDER$RIGHT.COLOR> EQ '') THEN
+    MAP<1,BORDER$RIGHT.COLOR> = DEFAULT
+  END
+  ATTERAY<1> = 'rgb'
+  ATTERAY<2> = MAP<1,BORDER$RIGHT.COLOR>
+  B.STATUS = MVTX.APPEND.NODE(R.BORDER,'color','',ATTERAY,'',COLOR)
+  GOSUB 5000
+  B.STATUS = XDOMClose(COLOR)
+END
+*
+IF (MAP<1,BORDER$TOP.STYLE> NE '') THEN
+  IF (MAP<1,BORDER$TOP.COLOR> EQ '') THEN
+    MAP<1,BORDER$TOP.COLOR> = DEFAULT
+  END
+  ATTERAY<1> = 'rgb'
+  ATTERAY<2> = MAP<1,BORDER$TOP.COLOR>
+  B.STATUS = MVTX.APPEND.NODE(T.BORDER,'color','',ATTERAY,'',COLOR)
+  GOSUB 5000
+  B.STATUS = XDOMClose(COLOR)
+END
+*
+IF (MAP<1,BORDER$BOT.STYLE> NE '') THEN
+  IF (MAP<1,BORDER$BOT.COLOR> EQ '') THEN
+    MAP<1,BORDER$BOT.COLOR> = DEFAULT
+  END
+  ATTERAY<1> = 'rgb'
+  ATTERAY<2> = MAP<1,BORDER$BOT.COLOR>
+  B.STATUS = MVTX.APPEND.NODE(B.BORDER,'color','',ATTERAY,'',COLOR)
+  GOSUB 5000
+  B.STATUS = XDOMClose(COLOR)
+END
+*
+IF (MAP<1,BORDER$DIAG.STYLE> NE '') THEN
+  IF (MAP<1,BORDER$DIAG.COLOR> EQ '') THEN
+    MAP<1,BORDER$DIAG.COLOR> = DEFAULT
+  END
+  ATTERAY<1> = 'rgb'
+  ATTERAY<2> = MAP<1,BORDER$DIAG.COLOR>
+  B.STATUS = MVTX.APPEND.NODE(D.BORDER,'color','',ATTERAY,'',COLOR)
+  GOSUB 5000
+  B.STATUS = XDOMClose(COLOR)
+END
+*
+RETURN
+* 
+*****************************************************************************
+5000 * Handle Errors
+*****************************************************************************
+*
+IF NOT(B.STATUS<RESULT$VALUE>) THEN
+  ERR.MSG := ' | error: ' : B.STATUS<RESULT$ERROR>
+END
+*
+RETURN 

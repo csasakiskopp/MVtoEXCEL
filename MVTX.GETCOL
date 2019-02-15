@@ -1,0 +1,25 @@
+FUNCTION MVTX.GETCOL(COL)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        08 May 2017
+* Project:     OPENXML
+* Description: This function will return an alphabetical column
+*              position based on COL
+*
+*
+*****************************************************************************
+*The Work
+*****************************************************************************
+*
+OKAY   = @FALSE
+LTR.CTR = 0
+RESULT = ''
+C      = COL
+LOOP
+WHILE (C GT 0) DO 
+  NUMBER = MOD(C - 1,26)
+  LETTER = CHAR(NUMBER + 65)
+  RESULT = LETTER : RESULT
+  C      = (C - (NUMBER + 1)) / 26 
+REPEAT
+RETURN RESULT

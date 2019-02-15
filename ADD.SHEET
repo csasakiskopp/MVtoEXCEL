@@ -1,0 +1,205 @@
+FUNCTION ADD.SHEET(SHEETNAME,OPTS)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        21 Dec 2017
+* Project:     MVtoXLSX
+* Description: This function will add a worksheet to the already loaded
+*              workbook set of DOM structures.
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT  = ''
+ATTERAY = ''
+IF (SHEETNAME EQ '') THEN 
+  SHEETNAME = 'Sheet' : SHEET.CNT
+END
+*
+UNIQUE = @FALSE
+CNTR   = 2
+NEWNAME = SHEETNAME[1,31]
+LOOP
+UNTIL (UNIQUE) DO
+  LOCATE(NEWNAME,WS.NAMES;PTR) THEN
+    NEWNAME = SHEETNAME :  '(' : CNTR : ')'
+    CNTR += 1
+  END ELSE
+    WS.NAMES<-1> = NEWNAME
+    SHEETNAME    = NEWNAME
+    UNIQUE = @TRUE
+  END
+REPEAT
+*
+*****************************************************************************
+* Do some work
+*****************************************************************************
+*
+IF (WB.ACTIVE) THEN
+  SHEET.CNT += 1
+  OKAY = @TRUE
+  GOSUB 1000 ;* Add counter/titles to doc props
+  GOSUB 2000 ;* Build workbook level relationships
+  GOSUB 3000 ;* Add to workbook.xml
+  GOSUB 4000 ;* Load the worksheet template
+  GOSUB 5000 ;* Load the worksheet rels template
+  GOSUB 6000 ;* Add worksheet overrides to content types
+  *
+  IF (OKAY) THEN
+    WS.REL.CNT<SHEET.CNT> = 0
+    WS.COL.CNT<SHEET.CNT> = 0
+    WS.ROW.CNT<SHEET.CNT> = 0
+    WS.ACTIVE<SHEET.CNT>  = @TRUE
+    RESULT = SHEET.CNT ;*Return the index of the sheet
+  END ELSE
+    SHEET.CNT -= 1
+  END
+  *
+END ELSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> := 'No active workbook found.'
+END
+*
+RETURN RESULT
+*
+*****************************************************************************
+1000 * Add counter/titles to doc props
+*****************************************************************************
+*
+WS.STATUS = XDOMLocateNode(app.HeadingPairs.vector.variant.i4,XDOM.CHILD,1,XDOM.TEXT.NODE,TN)
+WS.STATUS = XDOMSetNodeValue(TN,SHEET.CNT)
+*
+WS.STATUS = XDOMLocateNode(app.TitlesOfParts.vector,XDOM.CHILD,2,XDOM.ATTR.NODE,SIZE)
+WS.STATUS = XDOMSetNodeValue(SIZE,SHEET.CNT)
+*
+WS.STATUS = XDOMClone(app.TitlesOfParts.vector.lpstr,NEW.LPSTR,XDOM.TRUE)
+WS.STATUS = XDOMLocateNode(NEW.LPSTR,XDOM.CHILD,1,XDOM.TEXT.NODE,LPTN)
+WS.STATUS = XDOMSetNodeValue(LPTN,SHEETNAME)
+WS.STATUS = XDOMAddChild(app.TitlesOfParts.vector,'','',NEW.LPSTR,XDOM.NODUP)
+*
+IF (WS.STATUS NE XML.SUCCESS) THEN
+  OKAY = @FALSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> := 'Failed to setup doc props [' : WS.STATUS : '] '  
+END
+*
+RETURN
+*
+*****************************************************************************
+2000 * Build workbook level relationships
+*****************************************************************************
+*
+WB.REL.CNT += 1
+REL.TYPE   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
+REL.ID     = 'rId' : WB.REL.CNT
+REL.TARGET = 'worksheets/sheet' : SHEET.CNT : '.xml'
+*
+ATTERAY<1> = 'Type' : @VM : 'Id' : @VM : 'Target'
+ATTERAY<2> = REL.TYPE : @VM : REL.ID : @VM : REL.TARGET
+*
+WS.STATUS = MVTX.APPEND.NODE(workbook.xml.rels.Relationships,'Relationship','',ATTERAY,'',RELATIONSHIP)
+*
+IF NOT(WS.STATUS<RESULT$VALUE>) THEN
+  WB.REL.CNT -= 1
+  OKAY                 = @FALSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> := 'Failed to add workbook sheet relationship: [' : WS.STATUS<RESULT$ERROR>: ']' 
+END
+*
+RETURN
+*
+*****************************************************************************
+3000 * Add to workbook.xml
+*****************************************************************************
+*
+WS.STATUS = XDOMLocateNode(workbook.workbook.sheets.sheet,XDOM.CHILD,2,XDOM.ATTR.NODE,R.ID)
+WS.STATUS = XDOMLocateNode(workbook.workbook.sheets.sheet,XDOM.CHILD,3,XDOM.ATTR.NODE,SHEET.ID)
+WS.STATUS = XDOMLocateNode(workbook.workbook.sheets.sheet,XDOM.CHILD,1,XDOM.ATTR.NODE,NAME)
+*
+WS.STATUS = XDOMSetNodeValue(R.ID,'rId' : WB.REL.CNT)
+WS.STATUS = XDOMSetNodeValue(SHEET.ID,SHEET.CNT)
+WS.STATUS = XDOMSetNodeValue(NAME,SHEETNAME)
+*
+WS.STATUS = XDOMClone(workbook.workbook.sheets.sheet,NEW.SHEET,XDOM.TRUE)
+WS.STATUS = XDOMAddChild(workbook.workbook.sheets,'','',NEW.SHEET,XDOM.NODUP)
+*
+IF (WS.STATUS NE XML.SUCCESS) THEN
+  WS.STATUS = XMLGetError(CODE,MSG)
+  OKAY = @FALSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> := 'Failed to add sheet to workbook.xml [' : MSG : '] '
+END
+*
+RETURN
+*
+*****************************************************************************
+4000 * Load the worksheet template
+*****************************************************************************
+*
+WS.STATUS = MVTX.GET.TEMPLATE('SHEET',sheet(SHEET.CNT))
+WS.STATUS = MVTX.GET.CHILD(sheet(SHEET.CNT),1,sheet.worksheet(SHEET.CNT))
+WS.STATUS = MVTX.GET.CHILD(sheet.worksheet(SHEET.CNT),1,sheet.worksheet.dimension(SHEET.CNT))
+WS.STATUS = MVTX.GET.CHILD(sheet.worksheet(SHEET.CNT),2,SHEET.VIEWS)
+WS.STATUS = MVTX.GET.CHILD(sheet.worksheet(SHEET.CNT),4,sheet.worksheet.cols(SHEET.CNT))
+WS.STATUS = MVTX.GET.CHILD(sheet.worksheet(SHEET.CNT),5,sheet.worksheet.sheetData(SHEET.CNT))
+WS.STATUS = MVTX.REMOVE.NODE(sheet.worksheet(SHEET.CNT),7,sheet.worksheet.tableParts(SHEET.CNT))
+*
+IF (WS.STATUS<RESULT$VALUE>) THEN
+  IF (SHEET.CNT EQ 1) THEN
+    WS.STATUS = MVTX.GET.CHILD(SHEET.VIEWS,1,SHEET.VIEW)
+    WS.STATUS = XDOMLocateNode(SHEET.VIEW,XDOM.CHILD,1,XDOM.ATTR.NODE,TABSELECTED)
+    WS.STATUS = XDOMSetNodeValue(TABSELECTED,'1')
+    *
+    IF (WS.STATUS NE XML.SUCCESS) THEN
+      OKAY = @FALSE
+      WS.STATUS = XMLGetError(CODE,MSG)
+      RESULT<RESULT$VALUE> = @FALSE
+      RESULT<RESULT$ERROR> := 'Failed to setup doc props [' : MSG : ']'  
+    END
+  END
+END ELSE
+  OKAY = @FALSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> := 'Failed to build worksheet sheet' : SHEET.CNT : '.xml: [' : WS.STATUS<RESULT$ERROR> : '] '
+END
+*
+RETURN
+*
+*****************************************************************************
+5000 * Load the worksheet rels template
+*****************************************************************************
+*
+WS.STATUS = MVTX.GET.TEMPLATE('WS.XML.RELS',ws.xml.rels(SHEET.CNT))
+WS.STATUS = MVTX.GET.CHILD(ws.xml.rels(SHEET.CNT),1,ws.xml.rels.Relationships(SHEET.CNT))
+*
+IF NOT(WS.STATUS<RESULT$VALUE>) THEN
+  OKAY                 = @FALSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> := 'Failed to add worksheet rels template: [' : WS.STATUS<RESULT$ERROR>: '] ' 
+END
+*
+RETURN
+*
+*****************************************************************************
+6000 * Add overrides to content types
+*****************************************************************************
+*
+PART.NAME = '/xl/worksheets/sheet' : SHEET.CNT : '.xml'
+CONT.TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml'
+ATTERAY<1> = 'PartName' : @VM : 'ContentType'
+ATTERAY<2> = PART.NAME   : @VM : CONT.TYPE
+WS.STATUS = MVTX.APPEND.NODE(Content_Types.Types,'Override','',ATTERAY,'',CTYPES)
+*
+IF NOT(WS.STATUS<RESULT$VALUE>) THEN
+  OKAY                 = @FALSE
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> := 'Failed to add worksheet overrides: [' : WS.STATUS<RESULT$ERROR>: '] ' 
+END
+*
+RETURN

@@ -1,0 +1,224 @@
+FUNCTION MVTX.EDIT.CELL(SHEET.IDX,CORDS,CELL.DATA)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        21 Dec 2017
+* Project:     MVtoXLSX
+* Description: This function will edit the contents of a previously written
+*              cell
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+DEFFUN ADD.ROW(IDX,DATA.IN)
+*
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT      = ''
+OKAY        = @TRUE
+MSG         = ''
+ATTERAY     = ''
+COL         = FIELD(CORDS,',',1)
+ROW         = FIELD(CORDS,',',2)
+LOCATION    = MVTX.GETCOL(COL) : ROW
+*
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+IF (ROW GT WS.ROW.CNT<SHEET.IDX>) THEN
+  START.ROW = WS.ROW.CNT<SHEET.IDX> 
+  FOR NEWROW = START.ROW TO (ROW -1)
+    CELL.STATUS = ADD.ROW(SHEET.IDX,'')
+  NEXT NEWROW
+END
+*
+X.PATH     = "//*[@r='" : ROW : "']"
+CELL.STATUS = XDOMLocate(sheet.worksheet.sheetData(SHEET.IDX),X.PATH,'',ROW.HANDLE)
+*CELL.STATUS = MVTX.GET.CHILD(sheet.worksheet.sheetData(SHEET.IDX),ROW,ROW.HANDLE)
+*
+IF (CELL.STATUS EQ XML.SUCCESS) THEN
+  *
+  GOSUB 1000 ;* Get the column handle and assign attributes
+  GOSUB 2000 ;* Add values and formulas
+  *
+  IF (OKAY) THEN
+    RESULT = @TRUE
+  END ELSE
+    RESULT<RESULT$VALUE> = @FALSE
+    RESULT<RESULT$ERROR> = MSG
+  END
+  *
+END
+*
+RETURN RESULT
+*
+*****************************************************************************
+1000 * Get the column handle and assign attributes
+*****************************************************************************
+*
+CELL.STATUS = MVTX.GET.CHILD(ROW.HANDLE,COL,COL.HANDLE)
+IF (CELL.STATUS<RESULT$ERROR>) THEN
+  FOUND = @FALSE
+  IDX   = 0
+  LOOP
+  UNTIL (IDX EQ COL) DO
+    IDX      += 1
+    REFERENCE = MVTX.GETCOL(IDX) : ROW
+    CELL.STATUS = MVTX.GET.CHILD(ROW.HANDLE,IDX,TEST.HANDLE)
+    IF (CELL.STATUS<RESULT$ERROR>) THEN
+      ATTERAY<1> = 'r'
+      ATTERAY<2> = REFERENCE
+      CELL.STATUS = MVTX.APPEND.NODE(ROW.HANDLE,'c','',ATTERAY,'',CELL)
+      XML.STATUS = XDOMClose(CELL)
+    END
+  REPEAT
+  CELL.STATUS = MVTX.GET.CHILD(ROW.HANDLE,COL,COL.HANDLE)
+END
+*
+CELL.IS.NUMBER = (INT(CELL.DATA<CELL$VALUE>) NE 0) OR (CELL.DATA<CELL$VALUE> EQ '')
+VMC = 1
+ATTERAY = @FALSE
+IF (CELL.DATA<CELL$TYPE> NE 's') AND NOT(CELL.IS.NUMBER) THEN
+  CELL.DATA<CELL$TYPE> = 's'
+END
+IF (CELL.DATA<CELL$TYPE>) THEN
+  XML.STATUS = XDOMGetAttribute(COL.HANDLE,'t',ATT)
+  IF (XML.STATUS EQ XML.SUCCESS) THEN
+    XML.STATUS = XDOMSetNodeValue(ATT,CELL.DATA<CELL$TYPE>)
+    XML.STATUS = XDOMClose(ATT)
+  END ELSE
+    ATTERAY<1,VMC> = 't'
+    ATTERAY<2,VMC> = CELL.DATA<CELL$TYPE>
+    VMC += 1
+  END
+END ELSE
+  XML.STATUS = XDOMGetAttribute(COL.HANDLE,'t',ATT)
+  XML.STATUS = XDOMRemove(ATT,'','','',ATT)
+END
+*
+IF (CELL.DATA<CELL$STYLE>) THEN
+  XML.STATUS = XDOMGetAttribute(COL.HANDLE,'s',ATT)
+  IF (XML.STATUS EQ XML.SUCCESS) THEN
+    XML.STATUS = XDOMSetNodeValue(ATT,CELL.DATA<CELL$TYPE>)
+    XML.STATUS = XDOMClose(ATT)
+  END ELSE
+    ATTERAY<1,VMC> = 's'
+    ATTERAY<2,VMC> = CELL.DATA<CELL$STYLE>
+  END
+END ELSE
+  XML.STATUS = XDOMGetAttribute(COL.HANDLE,'s',ATT)
+  XML.STATUS = XDOMRemove(ATT,'','','',ATT)
+END
+*
+IF (ATTERAY) THEN
+  CELL.STATUS = MVTX.APPEND.NODE('','','',ATTERAY,'',COL.HANDLE)
+END
+IF NOT(CELL.STATUS<RESULT$VALUE>) THEN
+  OKAY = @FALSE
+  MSG := CELL.STATUS<RESULT$ERROR> : ' [Col ' : COL : '] '
+END
+*
+RETURN
+*
+*****************************************************************************
+2000 * Add values and formulas
+*****************************************************************************
+*
+N.NAME = 'v'
+FOUND = @FALSE
+GOSUB 2200 
+
+IF (CELL.DATA<CELL$TYPE> EQ 's') OR NOT(CELL.IS.NUMBER) THEN
+  CELL.VALUE = MVTX.ADD.STRING(CELL.DATA<CELL$VALUE>)
+END ELSE
+  CELL.VALUE = CELL.DATA<CELL$VALUE>
+END
+  *
+IF (FOUND) THEN
+  IF (CELL.DATA<CELL$VALUE>) THEN
+    IF (CELL.VALUE NE '') THEN
+      XML.STATUS = XDOMLocateNode(VAL,XDOM.CHILD,1,XDOM.TEXT.NODE,TXT)
+      XML.STATUS = XDOMSetNodeValue(TXT,CELL.VALUE)
+    END 
+    IF NOT(CELL.STATUS<RESULT$VALUE>) THEN
+      OKAY = @FALSE
+      MSG = CELL.STATUS<RESULT$ERROR>
+    END
+  END ELSE
+    XML.STATUS = XDOMRemove(VAL,'','','',VAL)
+  END
+END ELSE
+  IF (CELL.DATA<CELL$VALUE>) THEN
+    ROW.STATUS = MVTX.APPEND.NODE(COL.HANDLE,'v',CELL.VALUE,'','',VAL)
+  END
+END
+XML.STATUS = XDOMClose(VAL)
+*
+N.NAME = 'f'
+FOUND = @FALSE
+GOSUB 2200 
+IF (FOUND) THEN
+  IF (CELL.DATA<CELL$FORMULA>) THEN
+    XML.STATUS = XDOMLocateNode(VAL,XDOM.CHILD,1,XDOM.TEXT.NODE,TXT)
+    XML.STATUS = XDOMSetNodeValue(TXT,CELL.DATA<CELL$FORMULA>)
+  END ELSE
+    XML.STATUS = XDOMRemove(VAL,'','','',VAL)
+    X.PATH     = "//*[@r='" : LOCATION : "']"
+    XML.STATUS = XDOMLocate(calcChain,X.PATH,'',CALC.NODE)
+    XML.STATUS = XDOMRemove(CALC.NODE,'','','',CALC.NODE)
+    XML.STATUS = XDOMClose(CALC.NODE)
+  END
+END ELSE
+  IF (CELL.DATA<CELL$FORMULA>) THEN
+    CELL.STATUS = MVTX.ADD.FORMULA(SHEET.IDX,LOCATION)
+    IF (IDX EQ 1) THEN
+      CELL.STATUS = MVTX.APPEND.NODE(COL.HANDLE,'f',CELL.DATA<CELL$FORMULA>,'','',VAL)  
+    END ELSE
+      CELL.STATUS = MVTX.GET.CHILD(COL.HANDLE,'1',FIRST.CHILD)
+      XML.STATUS = XDOMCreateNode(COL.HANDLE,'f','',XDOM.ELEMENT.NODE,VAL)
+      XML.STATUS = XDOMCreateNode(COL.HANDLE,'',CELL.DATA<CELL$FORMULA>,XDOM.TEXT.NODE,VAL.TXT)
+      XML.STATUS = XDOMAddChild(VAL,'','',VAL.TXT,XDOM.NODUP)
+      XML.STATUS = XDOMInsert(FIRST.CHILD,'','',VAL,XDOM.NODUP)
+      XML.STATUS = XDOMClose(FIRST.CHILD)
+    END
+  END
+END
+XML.STATUS = XDOMClose(VAL)
+*
+IF NOT(CELL.STATUS<RESULT$VALUE>) THEN
+  OKAY = @FALSE
+  MSG := CELL.STATUS<RESULT$ERROR> : ' [Col ' : COL : '] '
+END
+
+
+*
+RETURN
+*
+*****************************************************************************
+2200 * Find a cell value/formula
+*****************************************************************************
+*
+IDX = 0
+DONE = @FALSE
+LOOP
+UNTIL (DONE) DO
+  IDX += 1
+  XML.STATUS = XDOMLocateNode(COL.HANDLE,XDOM.CHILD,IDX,XDOM.ELEMENT.NODE,VAL)
+  XML.STATUS = XDOMGetNodeName(VAL,NODE.TEXT)
+  IF (XML.STATUS NE XML.SUCCESS) THEN
+    DONE = @TRUE
+  END ELSE
+    IF (NODE.TEXT EQ N.NAME) THEN
+      DONE = @TRUE
+      FOUND = @TRUE
+    END ELSE
+      XML.STATUS = XDOMClose(VAL)
+    END
+  END
+REPEAT
+*
+RETURN

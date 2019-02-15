@@ -1,0 +1,232 @@
+FUNCTION WRITE.WB(FILENAME,DIRECTORY)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        12 Dec 2018
+* Project:     MV to Excel
+* Description: This fuction will write the common's Workbook DOM's 
+*              into the appropriate directory structure and zip it up.
+*              Returns the relative path of the final item.
+*
+******************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+NOW            = TIME()
+DIR            = 'XLSX' : @UID : NOW : '_' : @UDTNO
+PATH           = '_HOLD_/' : DIR
+TEMP.NAME      = @UID : NOW : @UDTNO
+ERR.MSG        = ''
+RESULT         = ''
+WB.STATUS      = ''
+*
+IF (FILENAME EQ '') THEN
+  FILENAME       = TEMP.NAME
+END
+IF (DIRECTORY EQ '') THEN
+  DIRECTORY = '_HOLD_'
+END
+*
+*****************************************************************************
+* Open Files
+*****************************************************************************
+*
+OPEN 'TMP' TO F.TMP ELSE RETURN
+*
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+IF (SHEET.CNT GT 0) AND (SUM(WS.ROW.CNT) GT 0) THEN
+  GOSUB 1000 ;* Build the directory
+  GOSUB 2000 ;* Write basic documents
+  GOSUB 3000 ;* Conditional documents
+  GOSUB 4000 ;* Zip it up
+  GOSUB 5000 ;* Close it up
+END ELSE
+  ERR.MSG = 'No sheet data found.'
+END
+*
+IF (ERR.MSG NE '') THEN
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> = ERR.MSG
+END ELSE
+  RESULT = DIRECTORY : '/' : FILENAME
+END
+*
+RETURN RESULT 
+*
+*****************************************************************************
+1000 * Build the directory
+*****************************************************************************
+*
+CMD = 'mkdir ' : PATH
+PCPERFORM CMD
+CMD = 'mkdir ' : PATH : '/_rels'
+PCPERFORM CMD
+CMD = 'mkdir ' : PATH : '/docProps'
+PCPERFORM CMD
+CMD = 'mkdir ' : PATH : '/xl'
+PCPERFORM CMD
+CMD = 'mkdir ' : PATH : '/xl/_rels'
+PCPERFORM CMD
+CMD = 'mkdir ' : PATH : '/xl/theme'
+PCPERFORM CMD
+CMD = 'mkdir ' : PATH : '/xl/worksheets'
+PCPERFORM CMD
+CMD = 'mkdir ' : PATH : '/xl/worksheets/_rels'
+PCPERFORM CMD
+*
+RETURN
+*
+*****************************************************************************
+2000 * Write basic documents
+*****************************************************************************
+*
+DOC        = PATH : '/[Content_Types].xml'
+XML.STATUS = XDOMWrite(Content_Types,DOC,XML.TO.FILE)
+GOSUB 9000 ;* Handle Errors
+*
+DOC        = PATH : '/docProps/core.xml'
+XML.STATUS = XDOMWrite(core,DOC,XML.TO.FILE)
+GOSUB 9000 ;* Handle Errors
+*
+DOC        = PATH : '/docProps/app.xml'
+XML.STATUS = XDOMWrite(app,DOC,XML.TO.FILE)
+GOSUB 9000 ;* Handle Errors
+*
+DOC        = PATH : '/_rels/.rels'
+XML.STATUS = XDOMWrite(rels,DOC,XML.TO.FILE)
+GOSUB 9000 ;* Handle Errors
+*
+DOC        = PATH : '/xl/workbook.xml'
+XML.STATUS = XDOMWrite(workbook,DOC,XML.TO.FILE)
+GOSUB 9000 ;* Handle Errors
+*
+DOC        = PATH : '/xl/_rels/workbook.xml.rels'
+XML.STATUS = XDOMWrite(workbook.xml.rels,DOC,XML.TO.FILE)
+GOSUB 9000 ;* Handle Errors
+*
+DOC        = PATH : '/xl/styles.xml'
+XML.STATUS = XDOMWrite(styles,DOC,XML.TO.FILE)
+GOSUB 9000 ;* Handle Errors
+*
+DOC        = PATH : '/xl/theme/theme1.xml'
+XML.STATUS = XDOMWrite(theme,DOC,XML.TO.FILE)
+GOSUB 9000 ;* Handle Errors
+*
+RETURN
+*
+*****************************************************************************
+3000 * Conditional documents
+*****************************************************************************
+*
+IF (SHEET.CNT GT 0) THEN
+  FOR SHEET = 1 TO SHEET.CNT
+    IF (WS.ROW.CNT<SHEET> GT 0) THEN
+      DOC        = PATH : '/xl/worksheets/sheet' : SHEET : '.xml'
+      XML.STATUS = XDOMWrite(sheet(SHEET),DOC,XML.TO.FILE)
+      IF (WS.REL.CNT<SHEET>) THEN
+        DOC        = PATH : '/xl/worksheets/_rels/sheet' : SHEET : '.xml.rels'
+        XML.STATUS = XDOMWrite(ws.xml.rels(SHEET),DOC,XML.TO.FILE)
+      END
+      GOSUB 9000 ;* Handle Errors
+    END
+  NEXT SHEET
+END
+*
+IF (STRING.CNT GT 0) THEN
+  DOC        = PATH : '/xl/sharedStrings.xml'
+  XML.STATUS = XDOMWrite(sharedStrings,DOC,XML.TO.FILE)
+  GOSUB 9000 ;* Handle Errors
+END
+*
+IF (CALC.CNT GT 0) THEN
+  DOC        = PATH : '/xl/calcChain.xml'
+  XML.STATUS = XDOMWrite(calcChain,DOC,XML.TO.FILE)
+  GOSUB 9000 ;* Handle Errors
+END
+*
+IF (SUM(TABLE.CNT) GT 0) THEN
+  CMD = 'mkdir ' : PATH : '/xl/tables'
+  PCPERFORM CMD CAPTURING OUTPUT
+  FOR TABLE.NUM = 1 TO SUM(TABLE.CNT)
+    DOC = PATH : '/xl/tables/table' : TABLE.NUM : '.xml'
+    XML.STATUS = XDOMWrite(table(TABLE.NUM),DOC,XML.TO.FILE)
+    GOSUB 9000 ;* Handle Errors
+  NEXT TABLE.NUM
+END
+*
+RETURN
+*
+*****************************************************************************
+4000 * Zip it up
+*****************************************************************************
+*
+IF (DIRECTORY[1,1] NE '/') THEN
+  DIRECTORY = @PATH : '/' : DIRECTORY
+END
+IF (FILENAME[LEN(FILENAME)-4,5] NE '.XLSX') OR ((FILENAME[LEN(FILENAME)-4,5] NE '.xlsx')) THEN
+  FILENAME = FILENAME : '.xlsx'
+END
+*
+SCRIPT.NAME   = 'OXML.' : NOW : @UDTNO
+SCRIPT.PATH   = '/tmp/'
+SCRIPT.REC    = ''
+SCRIPT.REC<1> = '#!/bin/bash'
+SCRIPT.REC<2> = 'cd ' : @PATH : '/' : PATH
+SCRIPT.REC<3> = 'zip -r ' : FILENAME : ' _rels xl docProps [Content_Types].xml'
+SCRIPT.REC<4> = 'mv ' : FILENAME : ' ' : DIRECTORY : '/' : FILENAME
+SCRIPT.REC<5> = 'cd ..'
+SCRIPT.REC<6> = 'rm -r ' : @PATH : '/' : PATH
+SCRIPT.REC<7> = 'cd ' : @PATH
+*
+WRITE SCRIPT.REC ON F.TMP,SCRIPT.NAME
+*
+CMD = '!chmod a+x ' : SCRIPT.PATH : SCRIPT.NAME
+EXECUTE CMD CAPTURING OUTPUT
+CMD = '!' : SCRIPT.PATH : SCRIPT.NAME
+EXECUTE CMD CAPTURING OUTPUT
+CMD = '!rm ' : SCRIPT.PATH : SCRIPT.NAME
+EXECUTE CMD CAPTURING OUTPUT
+*
+WB.STATUS<RESULT$ERROR> = OUTPUT
+GOSUB 9000 ;* Handle Errors
+*
+RETURN
+*
+*****************************************************************************
+5000 * Close it up
+*****************************************************************************
+*
+WB.STATUS = MVTX.CLEAR.COMMON()
+*
+GOSUB 9000 ;* Handle Errors
+*
+RETURN
+*
+*****************************************************************************
+9000 * Handle Errors
+*****************************************************************************
+*
+IF (XML.STATUS NE XML.SUCCESS) THEN
+  ERR = XMLGetError(XML.STATUS,MSG)
+  IF ERR.MSG NE '' THEN 
+    ERR.MSG := ' | '
+  END
+  ERR.MSG := MSG
+END 
+*
+IF (WB.STATUS<RESULT$ERROR> NE '') THEN
+  IF ERR.MSG NE '' THEN 
+    ERR.MSG := ' | '
+  END
+  ERR.MSG := MSG
+END
+*
+RETURN

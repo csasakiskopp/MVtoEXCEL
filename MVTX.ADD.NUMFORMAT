@@ -1,0 +1,59 @@
+FUNCTION MVTX.ADD.NUMFORMAT(MAP)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        13 Mar 2018
+* Project:     MVtoXLSX
+* Description: This function applies a border style map to the xml style sheet
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+* 
+*****************************************************************************
+* Initialize Variables
+*****************************************************************************
+*
+RESULT  = ''
+ATTERAY = ''
+ERR.MSG = ''
+* 
+*****************************************************************************
+* Do the work
+*****************************************************************************
+*
+BEGIN CASE
+  CASE (MAP<1,NUMFORMAT$FORMAT> NE '')
+    *
+    MAP<1,NUMFORMAT$ID> = ''
+    FMT.ID              = 163 + DCOUNT(NUMFORMATS,@AM)
+    *
+    ATTERAY<1> = 'formatCode' : @VM : 'numFmtId'
+    ATTERAY<2> = MAP<1,NUMFORMAT$FORMAT> : @VM : FMT.ID
+    N.STATUS = MVTX.APPEND.NODE(styles.styleSheet.numFmts,'numFmt','',ATTERAY,'',NFMT)
+    GOSUB 5000
+    *
+  CASE (MAP<1,NUMFORMAT$ID> NE '')
+    FMT.ID = MAP<1,NUMFORMAT$ID>
+  CASE 1
+END CASE
+*
+IF (ERR.MSG  NE '') THEN
+  RESULT<RESULT$VALUE> = @FALSE
+  RESULT<RESULT$ERROR> = ERR.MSG
+END ELSE
+  RESULT = FMT.ID
+END
+*
+RETURN RESULT
+*
+*****************************************************************************
+5000 * Handle Errors
+*****************************************************************************
+*
+IF NOT(N.STATUS<RESULT$VALUE>) THEN
+  ERR.MSG := ' | error: ' : N.STATUS<RESULT$ERROR>
+END
+*
+RETURN 

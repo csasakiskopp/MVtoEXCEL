@@ -1,0 +1,31 @@
+FUNCTION XML.REMOVE.NODE(PARENT.NODE,IDX,CHILD.NODE)
+*
+* Written By:  Charles Sasaki-Skopp
+* Date:        12 Dec 2017
+* Project:     OPENXML
+* Description: This function will find and remove an XML handle from a DOM
+*              to be used as a template for cloning and insertion
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+RESULT = @TRUE
+$INCLUDE MV.TO.EXCEL MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Find an element
+*****************************************************************************
+*
+RESULT = MVTX.GET.CHILD(PARENT.NODE,IDX,CHILD.NODE)
+IF (RESULT<RESULT$VALUE>) THEN
+  XML.STATUS = XDOMRemove(CHILD.NODE,'','','',CHILD.NODE)
+  IF (XML.STATUS EQ XML.SUCCESS) THEN
+    RESULT = @TRUE
+  END ELSE
+    RESULT<RESULT$VALUE> = @FALSE
+    RESULT<RESULT$ERROR> = 'Failed to remove child node [' : IDX : ']'
+  END
+END
+*
+RETURN RESULT

@@ -1,0 +1,67 @@
+*RETURN Attribute Map
+*If the function is successful, only one of these possible outputs will return. If <1> is, then an error should exist in <2>
+*If <1> has content, then <2> will be false.
+*
+EQU RESULT$VALUE   TO 1 
+EQU RESULT$ERROR   TO 2
+*
+*CELL Value Map
+*Maps to @VM of ROW.DATA for ADD.ROW(ROW.DATA)
+*The 4 characteristics make up the content of a cell
+*
+EQU CELL$VALUE     TO 1 ;*The displayed value of a cell1
+EQU CELL$TYPE      TO 2 ;*The type of data (eg s=string, n=number, b=bool)
+EQU CELL$FORMULA   TO 3 ;*An Excel formula for calculated cells
+EQU CELL$STYLE     TO 4 ;*A style index. Refences stylesheet and the output of ADD.STYLE()
+*
+*STYLE Value Map
+*Represents the value mark for each attribute of the STYLE.INDEX common, with each value containing a series of value marked indexes,
+*and the Attribute mark of the initial STYLE MAP. We can do this because the XML encapsulates the multivalued style attribute (border, for example)
+* and reduces it down to a single index number representing which tag contains the data in the xml doc. 
+* The indented equates represent the value marks inside each STYLE MAP attribute. 
+*
+EQU STYLES$BORDERS          TO 1
+  EQU BORDER$LEFT.STYLE     TO 1
+  EQU BORDER$RIGHT.STYLE    TO 2
+  EQU BORDER$DIAG.STYLE     TO 3 ;*Will require at least 1 true in "DIAG.UP" or "DIAG.DOWN" to display
+  EQU BORDER$TOP.STYLE      TO 4
+  EQU BORDER$BOT.STYLE      TO 5
+  EQU BORDER$LEFT.COLOR     TO 6
+  EQU BORDER$RIGHT.COLOR    TO 7
+  EQU BORDER$DIAG.COLOR     TO 8 ;*Will require at least 1 true in "DIAG.UP" or "DIAG.DOWN" to display
+  EQU BORDER$TOP.COLOR      TO 9
+  EQU BORDER$BOT.COLOR      TO 10
+  EQU BORDER$DIAG.UP        TO 11 ;*True/False in conjunction with Diagonal border style & color
+  EQU BORDER$DIAG.DOWN      TO 12 ;*True/False in conjunction with Diagonal border style & color
+EQU STYLES$FONTS            TO 2
+  EQU FONT$NAME             TO 1
+  EQU FONT$COLOR            TO 2
+  EQU FONT$SIZE             TO 3
+  EQU FONT$BOLD             TO 4
+  EQU FONT$ITALIC           TO 5
+  EQU FONT$UNDERLINE        TO 6
+  EQU FONT$STRIKE           TO 7
+  EQU FONT$VERTALIGN        TO 8
+EQU STYLES$PATTERNFILLS     TO 3
+  EQU PATTERNFILL$TYPE      TO 1
+  EQU PATTERNFILL$FG.COLOR  TO 2
+  EQU PATTERNFILL$BG.COLOR  TO 3
+EQU STYLES$NUMFORMATS       TO 4
+  EQU NUMFORMAT$ID          TO 1  ;*This numeral can represent a standard Excel numFormat ID, or a custom one (use 165 and above)
+  EQU NUMFORMAT$FORMAT      TO 2  ;*Standard Excel pattern mask, eg #,##0.00
+*
+*TABLE Attribute Map
+*Maps to @AM of TABLE.DATA for ADD.TABLE(SHEET.IDX,TABLE.DATA)
+*
+EQU TABLE$CORDS    TO 1   ;* Range                                            :: colnumber,rownumber @VM colnumber,rownumber
+EQU TABLE$FILTER   TO 2   ;* filters
+EQU TABLE$HEADER   TO 3   ;* Header (@VM)                                     :: if blank, table will not build
+EQU TABLE$TOTALS   TO 4   ;* Total row functions (@VM) :: If blank, no total row
+EQU TABLE$COLSTYL  TO 5   ;* Column styles (numberic style index)
+EQU TABLE$TOTSTYL  TO 6   ;* Totals style  (numeric style index)              :: if blank, defaults to column styles
+EQU TABLE$STYLE    TO 7   ;* Table Style :: defaults to Medium2
+EQU TABLE$COLSTRP  TO 8   ;* Column Stripes
+EQU TABLE$ROWSTRP  TO 9   ;* Row Stripes
+EQU TABLE$LCOLHI   TO 10  ;* Last Column highlight
+EQU TABLE$FCOLHI   TO 11  ;* First Column Highlight
+EQU TABLE$DSPNAME  TO 12  ;* Display Name

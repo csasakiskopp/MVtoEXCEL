@@ -1,0 +1,80 @@
+FUNCTION MVTX.APPEND.NODE(DOMHANDLE,NODE.NAME,NODE.VALUE,NODE.ATTR,NODE.NS,NODE.HANDLE)
+*
+* Written By:  Gregor Does U2 (adapted to Unidata by Charles Sasaki-Skopp)
+* Date:        08 May 2017
+* Project:     OPENXML
+* Description: This function will add to an XML DOM
+*
+*****************************************************************************
+* Includes
+*****************************************************************************
+*
+*
+$INCLUDE MV.TO.EXCEL  MVTX.PRIVATE.INCLUDE
+*
+*****************************************************************************
+* Make an element
+*****************************************************************************
+*
+RESULT = @TRUE
+XML.STATUS = XDOMGetNodeName(DOMHANDLE,TESTER)
+IF (XML.STATUS = XML.SUCCESS) THEN 
+  XML.STATUS = XDOMCreateNode(DOMHANDLE,NODE.NAME,'',XDOM.ELEMENT.NODE,NODE.HANDLE)
+  IF (XML.STATUS EQ XML.SUCCESS) THEN
+    XML.STATUS = XDOMAddChild(DOMHANDLE,'',NODE.NS,NODE.HANDLE,XDOM.NODUP)
+    IF (XML.STATUS NE XML.SUCCESS) THEN
+      RESULT<RESULT$VALUE> = @FALSE
+      RESULT<RESULT$ERROR> = 'Failed to add element child'
+    END
+  END ELSE
+    RESULT<RESULT$VALUE> = @FALSE
+    RESULT<RESULT$ERROR> = 'Failed to create xml element node'
+  END
+END
+*
+*****************************************************************************
+* Add text
+*****************************************************************************
+*
+XML.STATUS = XDOMGetNodeName(NODE.HANDLE,TESTER)
+IF (NODE.VALUE NE '') AND (XML.STATUS EQ XML.SUCCESS) THEN
+  XML.STATUS = XDOMCreateNode(NODE.HANDLE,'',NODE.VALUE,XDOM.TEXT.NODE,newText)
+  IF (XML.STATUS  EQ XML.SUCCESS) THEN
+    XML.STATUS = XDOMAddChild(NODE.HANDLE,'',NODE.NS,newText,XDOM.NODUP)
+    XML.STATUS = XDOMClose(newText)
+    IF (XML.STATUS NE XML.SUCCESS) THEN
+      RESULT<RESULT$VALUE> = @FALSE
+      RESULT<RESULT$ERROR> = 'Failed to add text child'
+    END
+  END ELSE
+    RESULT<RESULT$VALUE> = @FALSE
+    RESULT<RESULT$ERROR> = 'Failed to create xml text node'
+  END
+END
+*
+*****************************************************************************
+* Add attributes
+*****************************************************************************
+*
+IF (NODE.ATTR NE '') AND (XML.STATUS EQ XML.SUCCESS) THEN
+  *add attributes
+  ATTR.CNT = DCOUNT(NODE.ATTR<1>,@VM)
+  FOR ATTR.LOOP = 1 TO ATTR.CNT
+    NAME.ATTR = NODE.ATTR<1,ATTR.LOOP>
+    IF (NAME.ATTR NE '') THEN
+      VALUE.ATTR = NODE.ATTR<2,ATTR.LOOP>
+      XML.STATUS = XDOMCreateNode(NODE.HANDLE,NAME.ATTR,VALUE.ATTR,XDOM.ATTR.NODE,attrHandle)
+      IF (XML.STATUS  EQ XML.SUCCESS) THEN
+        XML.STATUS = XDOMAddChild(NODE.HANDLE,'',NODE.NS,attrHandle,XDOM.NODUP)
+        XML.STATUS = XDOMClose(attrHandle)
+      END
+    END
+  NEXT ATTR.LOOP
+  IF (XML.STATUS NE XML.SUCCESS) THEN
+    RESULT<RESULT$VALUE> = @FALSE
+    RESULT<RESULT$ERROR> = 'Failed to create xml attribute'
+  END
+END
+*
+RETURN RESULT
+ 
