@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:udc="http://schemas.microsoft.com/data/udc" xmlns:udcxf="http://schemas.microsoft.com/data/udc/xmlfile" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:x2="http://schemas.microsoft.com/office/excel/2003/xml" xmlns:xsd="http://www.w3.org/2001/XMLSchema"> 
+
+  <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">  
+    <Version>14.00</Version> 
+  </DocumentProperties> 
+
+  <OfficeDocumentSettings xmlns="urn:schemas-microsoft-com:office:office">  
+    <AllowPNG/> 
+  </OfficeDocumentSettings> 
+
+  <ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">  
+    <WindowHeight>10005</WindowHeight>  
+    <WindowWidth>10005</WindowWidth>  
+    <WindowTopX>120</WindowTopX>  
+    <WindowTopY>135</WindowTopY>  
+    <ProtectStructure>False</ProtectStructure>  
+    <ProtectWindows>False</ProtectWindows>  
+    <FutureVer>11</FutureVer> 
+  </ExcelWorkbook> 
+
+  <Styles>  
+    <Style ss:ID="Default" ss:Name="Normal">   
+      <Alignment ss:Vertical="Bottom"/>   
+      <Borders/>   
+      <Font ss:Color="#000000" ss:FontName="Times New Roman" x:Family="Swiss"/>   
+      <Interior/>   
+      <NumberFormat/>   
+      <Protection/>  
+    </Style>  
+    <Style ss:ID="plainText">   
+      <NumberFormat ss:Format="@"/>  
+    </Style>  
+    <Style ss:ID="monetary2d">   
+      <NumberFormat ss:Format="&quot;$&quot;#,##0.00"/>  
+    </Style>  
+    <Style ss:ID="monetary3d">   
+      <NumberFormat ss:Format="&quot;$&quot;#,##0.000"/>  
+    </Style>  
+    <Style ss:ID="numeric3d">   
+      <NumberFormat ss:Format="#,##0.000"/>  
+    </Style>  
+    <Style ss:ID="numeric2d">   
+      <NumberFormat ss:Format="Standard"/>  
+    </Style>  
+    <Style ss:ID="date">   
+      <NumberFormat ss:Format="m/d/yy;@"/>  
+    </Style> 
+  </Styles>
+
+  <Worksheet ss:Name="Sales">
+    <Table>
+      <Column ss:AutoFitWidth="1" ss:StyleID="plainText" ss:Width="24"/>
+      <Column ss:AutoFitWidth="1" ss:StyleID="monetary2d" ss:Width="52"/>
+      <Column ss:AutoFitWidth="1" ss:StyleID="monetary2d" ss:Width="45"/>
+      <Row>
+        <Cell>
+          <Data ss:Type="String">Rep</Data>
+        </Cell>
+        <Cell>
+          <Data ss:Type="String">Sales</Data>
+        </Cell>
+        <Cell>
+          <Data ss:Type="String">Margin</Data>
+        </Cell>
+      </Row>
+      <Row>
+        <Cell>
+          <Data ss:Type="String">DS</Data>
+        </Cell>
+        <Cell>
+          <Data ss:Type="Number">1000.10</Data>
+        </Cell>
+        <Cell>
+          <Data ss:Type="Number">185.69</Data>
+        </Cell>
+      </Row>
+      <Row>
+        <Cell>
+          <Data ss:Type="String">AH</Data>
+        </Cell>
+        <Cell>
+          <Data ss:Type="Number">1020.15</Data>
+        </Cell>
+        <Cell>
+          <Data ss:Type="Number">201.79</Data>
+        </Cell>
+      </Row>
+      <Row>
+        <Cell ss:Index="1"/>
+        <Cell ss:Formula="=SUBTOTAL(109,R1C2:R3C2)" ss:Index="2"/>
+        <Cell ss:Formula="=SUBTOTAL(109,R1C3:R3C3)" ss:Index="3"/>
+      </Row>
+    </Table>
+  </Worksheet>
+
+  <x2:MapInfo x2:HideInactiveListBorder="false">
+    <x2:Schema x2:ID="Sales_Schema" x2:Namespace="">
+      <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+        <xsd:element name="data-set" nillable="true">
+          <xsd:complexType>
+            <xsd:sequence minOccurs="0">
+              <xsd:element form="unqualified" maxOccurs="unbounded" minOccurs="0" name="record" nillable="true">
+                <xsd:complexType>
+                  <xsd:sequence minOccurs="0">
+                    <xsd:element form="unqualified" minOccurs="0" name="Rep" nillable="true" type="xsd:string"/>
+                    <xsd:element form="unqualified" minOccurs="0" name="Sales" nillable="true" type="xsd:decimal"/>
+                    <xsd:element form="unqualified" minOccurs="0" name="Margin" nillable="true" type="xsd:decimal"/>
+                  </xsd:sequence>
+                </xsd:complexType>
+              </xsd:element>
+            </xsd:sequence>
+          </xsd:complexType>
+        </xsd:element>
+      </xsd:schema>
+    </x2:Schema>
+    <x2:Map x2:ID="data-set_Sales" x2:RootElement="data-set" x2:SchemaID="Sales_Schema">
+      <x2:Entry x2:ID="1" x2:ShowTotals="true" x2:Type="table">
+        <x2:Range>Sales!R2C1:R3C3</x2:Range>
+        <x2:HeaderRange>R1C1</x2:HeaderRange>
+        <x:FilterOn>True</x:FilterOn>
+        <x2:XPath>/data-set/record</x2:XPath>
+        <x2:Field x2:ID="Rep">
+          <x2:Range>RC[0]</x2:Range>
+          <x2:XPath>Rep</x2:XPath>
+          <ss:Cell/>
+          <x2:Aggregate>None</x2:Aggregate>
+        </x2:Field>
+        <x2:Field x2:ID="Sales">
+          <x2:Range>RC[1]</x2:Range>
+          <x2:XPath>Sales</x2:XPath>
+          <ss:Cell/>
+          <x2:Aggregate>None</x2:Aggregate>
+        </x2:Field>
+        <x2:Field x2:ID="Margin">
+          <x2:Range>RC[2]</x2:Range>
+          <x2:XPath>Margin</x2:XPath>
+          <ss:Cell/>
+          <x2:Aggregate>None</x2:Aggregate>
+        </x2:Field>
+      </x2:Entry>
+    </x2:Map>
+  </x2:MapInfo>
+
+  <x2:Binding x2:ID="Binding1" x2:LoadMode="normal">
+    <x2:MapID>data-set_Sales</x2:MapID>
+    <udc:DataSource MajorVersion="1" MinorVersion="0" xmlns:udc="http://schemas.microsoft.com/data/udc">
+      <udc:Type MajorVersion="1" MinorVersion="0" Type="XMLFile"/>
+      <udc:Name>Binding1</udc:Name>
+      <udc:ConnectionInfo Purpose="Query">
+        <udcxf:File xmlns:udcxf="http://schemas.microsoft.com/data/udc/xmlfile"/>
+      </udc:ConnectionInfo>
+    </udc:DataSource> 
+  </x2:Binding>
+
+</Workbook>
+
