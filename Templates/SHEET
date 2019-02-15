@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac"> 
+
+  <dimension ref="A1:A1"/> 
+
+  <sheetViews>   
+    <sheetView tabSelected="0" workbookViewId="0"/>  
+  </sheetViews>  
+
+  <sheetFormatPr defaultRowHeight="13" x14ac:dyDescent="0.3"/> 
+
+  <cols> </cols> 
+
+  <sheetData> </sheetData> 
+
+  <pageMargins bottom="1" footer="0.5" header="0.5" left="0.75" right="0.75" top="1"/> 
+
+  <tableParts count="">   
+    <tablePart r:id=""/> 
+  </tableParts>
+
+</worksheet>
+
